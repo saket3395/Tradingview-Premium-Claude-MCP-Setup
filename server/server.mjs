@@ -34,7 +34,7 @@ function loadEnv(file) {
 
 const send = (res, code, body, type = 'application/json') => {
   res.writeHead(code, { 'content-type': type, 'cache-control': 'no-store' });
-  res.end(typeof body === 'string' ? body : JSON.stringify(body));
+  res.end(Buffer.isBuffer(body) || typeof body === 'string' ? body : JSON.stringify(body));
 };
 const readBody = req => new Promise(r => { let d = ''; req.on('data', c => d += c); req.on('end', () => r(d)); });
 const json = s => { try { return JSON.parse(s); } catch { return {}; } };
