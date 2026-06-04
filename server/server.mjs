@@ -2,7 +2,8 @@
 // Serves public/ and a small JSON API backed by the reused CDP bridge (lib/tv.mjs).
 // ANALYSIS ONLY — no order execution endpoints exist.
 
-import { createServer } from 'node:http';
+import { createServer as createHttpServer } from 'node:http';
+import { createServer as createHttpsServer } from 'node:https';
 import { readFile, readFileSync, writeFile, mkdirSync, existsSync } from 'node:fs';
 import { readFile as readFileP } from 'node:fs/promises';
 import { join, extname, dirname } from 'node:path';
@@ -17,6 +18,15 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 loadEnv(join(ROOT, '.env'));
 const PORT = Number(process.env.PORT || 4178);
 const PUBLIC = join(ROOT, 'public');
+
+// Optional local TLS (mkcert). Present -> HTTPS so Safari trusts it; absent -> HTTP (unchanged).
+let tls = null;
+try {
+  tls = {
+    cert: readFileSync(join(ROOT, 'certs', 'localhost+2.pem')),
+    key: readFileSync(join(ROOT, 'certs', 'localhost+2-key.pem')),
+  };
+} catch { tls = null; }
 const DATA = join(ROOT, 'data');
 const JOURNAL = join(DATA, 'journal.json');
 if (!existsSync(DATA)) mkdirSync(DATA, { recursive: true });
@@ -103,7 +113,7 @@ const routes = {
   },
 };
 
-createServer(async (req, res) => {
+const handler = async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
   const key = `${req.method} ${url.pathname}`;
 
@@ -123,4 +133,8 @@ createServer(async (req, res) => {
     if (err) return send(res, 404, 'not found', 'text/plain');
     send(res, 200, buf, MIME[extname(file)] || 'application/octet-stream');
   });
-}).listen(PORT, () => console.log(`Dashboard:  http://localhost:${PORT}  (TV_CDP=${process.env.TV_CDP || 'http://127.0.0.1:9222'})`));
+};
+
+const server = tls ? createHttpsServer(tls, handler) : createHttpServer(handler);
+const scheme = tls ? 'https' : 'http';
+server.listen(PORT, () => console.log(`Dashboard:  ${scheme}://localhost:${PORT}  (TV_CDP=${process.env.TV_CDP || 'http://127.0.0.1:9222'})`));

@@ -3,3 +3,6 @@ node_modules/
 .DS_Store
 data/journal.json
 *.log
+
+# Local TLS certs (mkcert) — never commit private keys
+certs/
