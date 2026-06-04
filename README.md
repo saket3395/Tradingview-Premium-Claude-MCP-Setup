@@ -26,6 +26,10 @@ cp .env.example .env            # optional; defaults work
 No `npm install` needed (no dependencies).
 
 ## Run
+**Easiest:** double-click `scripts/start.command` in Finder — it ensures CDP, starts the
+dashboard, and opens it in your browser. Close that Terminal window to stop the server.
+
+**Or from a terminal:**
 ```bash
 npm run tv:debug                # quits + relaunches TradingView with CDP on :9222
 npm start                       # dashboard at http://localhost:4178
