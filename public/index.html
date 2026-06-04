@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TradingView × Claude MCP — Dashboard</title>
+<link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+<header>
+  <div class="brand">TV × Claude <span>MCP Dashboard</span></div>
+  <div class="status" id="status">
+    <span class="pill" id="pill-cdp">CDP …</span>
+    <span class="pill" id="pill-app">—</span>
+    <span class="pill" id="pill-tabs">tabs —</span>
+    <span class="pill" id="pill-updated">updated —</span>
+    <label class="pill"><input type="checkbox" id="autopoll" checked /> live</label>
+  </div>
+</header>
+
+<main>
+  <!-- SIGNAL SUMMARY (active chart) -->
+  <section class="card span2" id="signal-card">
+    <h2>Signal Summary <small>· active chart</small></h2>
+    <div id="signal-empty" class="empty">Connect TradingView (CDP) to read the active chart.</div>
+    <div id="signal-body" class="hidden">
+      <div class="sigtop">
+        <div class="sym" id="sig-sym">—</div>
+        <div class="tf" id="sig-tf">—</div>
+        <div class="bias" id="sig-bias">—</div>
+        <div class="px"><span id="sig-close">—</span> <span id="sig-chg" class="chg"></span></div>
+      </div>
+      <div class="metrics" id="sig-metrics"></div>
+      <ul class="signals" id="sig-list"></ul>
+    </div>
+  </section>
+
+  <!-- MCP HEALTH -->
+  <section class="card" id="health-card">
+    <h2>MCP / CDP Health</h2>
+    <table class="kv" id="health-kv"><tbody></tbody></table>
+    <div class="hint" id="health-hint"></div>
+  </section>
+
+  <!-- INDIA INTRADAY -->
+  <section class="card market" id="m-india">
+    <h2 class="mhead">🇮🇳 India — Intraday <small id="india-session"></small></h2>
+    <div class="tfs" id="india-tfs"></div>
+    <div class="scan"><div class="scan-head">Fast scan <small>(NSE/BSE watchlist)</small></div><ul class="symlist" id="india-scan"></ul></div>
+    <div class="checklist"><div class="scan-head">Trade checklist</div><ul id="india-check"></ul></div>
+  </section>
+
+  <!-- USA SWING / OPTIONS -->
+  <section class="card market" id="m-usa">
+    <h2 class="mhead">🇺🇸 USA — Swing / Options <small id="usa-session"></small></h2>
+    <div class="tfs" id="usa-tfs"></div>
+    <div class="scan"><div class="scan-head">Fast scan <small>(US watchlist)</small></div><ul class="symlist" id="usa-scan"></ul></div>
+    <div class="checklist"><div class="scan-head">Trade checklist</div><ul id="usa-check"></ul></div>
+  </section>
+
+  <!-- PINE WORKSPACE -->
+  <section class="card span2" id="pine-card">
+    <h2>Pine Script Workspace</h2>
+    <div class="toolbar">
+      <button id="pine-read">Read from chart</button>
+      <button id="pine-write">Write to editor</button>
+      <button id="pine-compile" class="primary">Compile</button>
+      <span class="grow"></span>
+      <span class="pine-status" id="pine-status"></span>
+    </div>
+    <textarea id="pine-code" spellcheck="false" placeholder="// Pine source — Read from chart, edit, Write, then Compile.&#10;//@version=6&#10;indicator(&quot;My script&quot;, overlay=true)&#10;plot(close)"></textarea>
+    <pre class="console" id="pine-console"></pre>
+  </section>
+
+  <!-- ALERT / JOURNAL -->
+  <section class="card span2" id="journal-card">
+    <h2>Alert / Journal Manager</h2>
+    <form class="jform" id="jform">
+      <select id="j-market"><option value="india_intraday">India intraday</option><option value="usa_swing">USA swing/options</option></select>
+      <input id="j-symbol" placeholder="Symbol" />
+      <select id="j-side"><option value="">side</option><option>Long</option><option>Short</option><option>Call</option><option>Put</option></select>
+      <input id="j-setup" placeholder="Setup / signal" />
+      <input id="j-note" placeholder="Note" class="grow" />
+      <button class="primary" type="submit">Log</button>
+      <a id="j-export" href="/api/journal.csv" download="journal.csv">Export CSV</a>
+    </form>
+    <div class="jlist" id="jlist"></div>
+  </section>
+</main>
+
+<footer>Analysis only — no live order execution. Reads the chart tab that is active in TradingView Desktop.</footer>
+<script src="/app.js"></script>
+</body>
+</html>

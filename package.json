@@ -1,0 +1,15 @@
+{
+  "name": "tradingview-premium-claude-mcp-setup",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Analysis-only dashboard for TradingView Premium Desktop driven via Claude Code + MCP/CDP. India intraday + USA swing/options.",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node server/server.mjs",
+    "dev": "node --watch server/server.mjs",
+    "tv:debug": "bash scripts/tv-debug.sh",
+    "tv": "node lib/tv.mjs"
+  },
+  "license": "MIT"
+}

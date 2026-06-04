@@ -1,0 +1,5 @@
+//@version=6
+indicator("CC Test", overlay=true)
+len = input.int(14, "Length")
+emaVal = ta.ema(close, len)
+plot(emaVal, color=color.blue, title="EMA"

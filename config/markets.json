@@ -1,0 +1,35 @@
+{
+  "markets": {
+    "india_intraday": {
+      "label": "🇮🇳 India — Intraday",
+      "exchanges": ["NSE", "BSE", "NSE:", "BSE:"],
+      "timeframes": ["1m", "3m", "5m", "15m"],
+      "session": "09:15–15:30 IST",
+      "checklist": [
+        "Index trend (NIFTY/BANKNIFTY) aligned with trade",
+        "Above/below VWAP in trade direction",
+        "Relative volume > 1.5x",
+        "Clear intraday level (PDH/PDL/ORB) nearby",
+        "Risk ≤ 1R, hard stop set",
+        "No event/news spike in next 15m",
+        "Square-off plan before 15:20 IST"
+      ]
+    },
+    "usa_swing": {
+      "label": "🇺🇸 USA — Swing / Options Buying",
+      "exchanges": ["NASDAQ", "NYSE", "AMEX", "NASDAQ:", "NYSE:", "AMEX:"],
+      "timeframes": ["1D", "4h", "1h", "30m"],
+      "session": "09:30–16:00 ET",
+      "checklist": [
+        "Daily trend + higher-TF structure aligned",
+        "Above key MA (20/50) for longs",
+        "Relative strength vs SPY/QQQ",
+        "Catalyst / earnings date checked",
+        "Options: IV rank + spread acceptable, DTE ≥ 14",
+        "Defined risk: max loss = premium / planned stop",
+        "Position size ≤ planned % of account"
+      ]
+    }
+  },
+  "pollSeconds": 7
+}
