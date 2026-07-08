@@ -13,6 +13,7 @@ import {
   ensurePineOpen, readPine, writePine, compilePine, setSymbol,
 } from '../lib/tv.mjs';
 import { parseSignals } from '../lib/signals.mjs';
+import { scanTPO } from '../lib/tpo.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 loadEnv(join(ROOT, '.env'));
@@ -92,6 +93,46 @@ const routes = {
     const { symbol } = json(await readBody(req));
     if (!symbol) return { ok: false, error: 'symbol required' };
     return withChart(cl => setSymbol(cl, symbol));
+  },
+
+  // TPO Scanner — Stage 1: full-NSE, profile-informed structural scan (server-side
+  // scanner data; real, typically ~15m delayed). No chart interaction.
+  'GET /api/tpo/scan': async () => {
+    const cfg = json(await readFileP(join(ROOT, 'config', 'markets.json'), 'utf8'));
+    return scanTPO(cfg.tpo || {});
+  },
+
+  // TPO Scanner — Stage 2: on-demand deep confirm for one symbol. Switches the visible
+  // chart to it and reads LIVE OHLC (real-time per your TV session) plus any Market
+  // Profile / Volume Profile study rows present in the chart legend.
+  'POST /api/tpo/confirm': async (req) => {
+    const { symbol } = json(await readBody(req));
+    if (!symbol) return { ok: false, error: 'symbol required' };
+    const want = symbol.split(':').pop().toUpperCase().replace(/\s+/g, '');
+    return withChart(async cl => {
+      await setSymbol(cl, symbol);
+      const chart = await readChart(cl);
+      const got = (chart.symbol || '').toUpperCase().replace(/\s+/g, '');
+      // Guard: the chart switcher is best-effort. If it didn't actually load the
+      // requested symbol, do NOT report another symbol's data as the confirm.
+      if (got !== want) {
+        return {
+          ok: false, symbol, chartSymbol: chart.symbol,
+          error: `Chart switch didn't take (chart shows ${chart.symbol || '—'}). Bring a TradingView chart tab to the front and retry.`,
+        };
+      }
+      const rows = await readIndicators(cl);
+      const live = parseSignals(rows, chart);
+      const rx = /POC|VAH|VAL|value area|volume profile|market profile|\bTPO\b|\bVP\b/i;
+      const profileRows = rows.filter(r => rx.test(r));
+      return {
+        ok: true, symbol, chartSymbol: chart.symbol, interval: chart.intervalShort || chart.interval,
+        live: { open: live.open, high: live.high, low: live.low, close: live.close, changePct: live.changePct },
+        profileRows,
+        note: profileRows.length ? 'Profile study levels read from chart legend.'
+          : 'No Market/Volume Profile study on the chart — showing live OHLC only. Add a TPO/Volume Profile study for true POC/VAH/VAL.',
+      };
+    });
   },
 
   'GET /api/journal': async () => getJournal(),

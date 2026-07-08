@@ -6,3 +6,6 @@ data/journal.json
 
 # Local TLS certs (mkcert) — never commit private keys
 certs/
+
+# Local editor / preview launch config (machine-specific paths)
+.claude/

@@ -31,5 +31,14 @@
       ]
     }
   },
-  "pollSeconds": 7
+  "pollSeconds": 7,
+  "tpo": {
+    "refreshSeconds": 30,
+    "minScore": 70,
+    "minRR": 1.5,
+    "minRVol": 1.2,
+    "minAvgVol": 50000,
+    "minPrice": 20,
+    "top": 40
+  }
 }

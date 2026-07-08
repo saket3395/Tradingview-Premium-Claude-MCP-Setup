@@ -9,6 +9,10 @@
 <body>
 <header>
   <div class="brand">TV × Claude <span>MCP Dashboard</span></div>
+  <nav class="tabs" id="tabs">
+    <button class="tab active" data-view="dashboard">Dashboard</button>
+    <button class="tab" data-view="tpo">TPO Scanner</button>
+  </nav>
   <div class="status" id="status">
     <span class="pill" id="pill-cdp">CDP …</span>
     <span class="pill" id="pill-app">—</span>
@@ -18,7 +22,7 @@
   </div>
 </header>
 
-<main>
+<main id="view-dashboard">
   <!-- SIGNAL SUMMARY (active chart) -->
   <section class="card span2" id="signal-card">
     <h2>Signal Summary <small>· active chart</small></h2>
@@ -85,6 +89,58 @@
       <a id="j-export" href="/api/journal.csv" download="journal.csv">Export CSV</a>
     </form>
     <div class="jlist" id="jlist"></div>
+  </section>
+</main>
+
+<!-- TPO SCANNER (separate view) -->
+<main id="view-tpo" class="hidden">
+  <section class="card span2" id="tpo-card">
+    <h2>TPO Scanner <small>· NSE intraday · Market-Profile-informed · high-quality only</small></h2>
+    <div class="tpo-toolbar">
+      <label class="pill" id="tpo-auto-wrap"><input type="checkbox" id="tpo-auto" checked /> auto-refresh</label>
+      <span class="pill" id="tpo-cycle">every 30s</span>
+      <span class="pill" id="tpo-next">next —</span>
+      <span class="grow"></span>
+      <button id="tpo-refresh" class="btn-confirm">Refresh now</button>
+    </div>
+    <details class="tpo-how" id="tpo-how">
+      <summary>How it works</summary>
+      <div class="tpo-how-body">
+        <p><b>Stage 1 — broad scan (automatic).</b> Every cycle the server queries TradingView's public
+        scanner for the <b>entire NSE universe (~2,900 primary stocks)</b> and scores each one. Data is
+        <b>real but typically ~15 min delayed</b> (real-time NSE needs your logged-in session, which the
+        browser blocks cross-origin). No chart is touched — the scan runs server-side.</p>
+        <p><b>Conviction score (0–100)</b> blends native Market-Profile concepts, all from real fields:
+        <b>Opening Location</b> (gap + open-drive), <b>Value Acceptance/Rejection</b> (position in the day
+        range and price vs the session <b>Pivot</b>), <b>IB / Range-Extension</b> trend-day proxy (range ÷ ATR),
+        <b>Relative Volume</b> conviction, <b>NIFTY alignment</b>, and <b>R:R geometry</b>. Only setups scoring
+        <b>≥70</b> with <b>R:R ≥1.5</b> and <b>rVol ≥1.2</b> are shown, ranked by conviction — thresholds live in
+        <code>config/markets.json → tpo</code>.</p>
+        <p><b>Levels.</b> <b>Entry</b> is a pullback into value (the Pivot) rather than chasing the extreme;
+        <b>SL</b> sits beyond value (tighter of an ATR stop or the day extreme); <b>Targets</b> project range
+        extension beyond the session high/low. <b>R:R</b> falls out of that geometry.</p>
+        <p><b>Stage 2 — confirm (on demand).</b> The <b>Confirm</b> button loads that symbol on your active
+        TradingView chart and reads <b>live OHLC</b> plus any Volume/Market-Profile study present — true
+        POC/VAH/VAL appear only if such a study is on the chart.</p>
+        <p class="tpo-how-note"><b>Honest caveats:</b> the scanner's “VWAP” field is actually the pivot
+        <code>(H+L+C)/3</code>, so it is labeled <b>Pivot</b>, not VWAP. Full letter-by-letter TPO
+        (POC/VAH/VAL/IB/single prints) needs intraday time-at-price and isn’t computable for the whole
+        universe from day-level data — Stage 1 is profile-<i>informed</i>; Stage 2 gives true on-chart levels.</p>
+      </div>
+    </details>
+    <div class="tpo-meta" id="tpo-meta">Loading…</div>
+    <div class="tpo-tablewrap">
+      <table class="tpo-table" id="tpo-table">
+        <thead><tr>
+          <th>Symbol</th><th class="num">LTP</th><th>Signal</th><th class="num">Entry</th>
+          <th class="num">SL</th><th class="num">Targets</th><th class="num">R:R</th>
+          <th>Confidence</th><th>TPO Reason</th><th></th>
+        </tr></thead>
+        <tbody id="tpo-body"></tbody>
+      </table>
+    </div>
+    <div class="tpo-confirm hidden" id="tpo-confirm"></div>
+    <div class="hint" id="tpo-note"></div>
   </section>
 </main>
 
