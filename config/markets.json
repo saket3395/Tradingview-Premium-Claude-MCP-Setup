@@ -34,11 +34,22 @@
   "pollSeconds": 7,
   "tpo": {
     "refreshSeconds": 30,
-    "minScore": 70,
-    "minRR": 1.5,
-    "minRVol": 1.2,
-    "minAvgVol": 50000,
-    "minPrice": 20,
-    "top": 40
+    "india": {
+      "minScore": 70,
+      "minRR": 1.5,
+      "minRVol": 1.2,
+      "minAvgVol": 50000,
+      "minPrice": 20,
+      "top": 40
+    },
+    "usa": {
+      "minScore": 70,
+      "minRR": 1.5,
+      "minRVol": 1.2,
+      "minAvgVol": 100000,
+      "minPrice": 5,
+      "minMarketCap": 300000000,
+      "top": 40
+    }
   }
 }

@@ -95,11 +95,16 @@ const routes = {
     return withChart(cl => setSymbol(cl, symbol));
   },
 
-  // TPO Scanner — Stage 1: full-NSE, profile-informed structural scan (server-side
+  // TPO Scanner — Stage 1: full-universe, profile-informed structural scan (server-side
   // scanner data; real, typically ~15m delayed). No chart interaction.
   'GET /api/tpo/scan': async () => {
     const cfg = json(await readFileP(join(ROOT, 'config', 'markets.json'), 'utf8'));
-    return scanTPO(cfg.tpo || {});
+    return scanTPO(cfg.tpo?.india || {}, 'india');
+  },
+
+  'GET /api/tpo/scan/usa': async () => {
+    const cfg = json(await readFileP(join(ROOT, 'config', 'markets.json'), 'utf8'));
+    return scanTPO(cfg.tpo?.usa || {}, 'usa');
   },
 
   // TPO Scanner — Stage 2: on-demand deep confirm for one symbol. Switches the visible

@@ -143,115 +143,126 @@ async function loadJournal() {
   });
 }
 
-// ---------- tabs + TPO scanner ----------
+// ---------- tabs + TPO scanners (India + USA share one implementation) ----------
 (function wireTabsAndTPO() {
-  const views = { dashboard: $('#view-dashboard'), tpo: $('#view-tpo') };
+  const views = { dashboard: $('#view-dashboard'), tpo: $('#view-tpo'), 'tpo-usa': $('#view-tpo-usa') };
   const tabs = [...document.querySelectorAll('#tabs .tab')];
-  let tpoMs = 30000, tpoStarted = false, autoOn = true;
-  let cycleTimer = null, tickTimer = null, nextAt = 0, scanning = false;
+
+  // One TPO controller bound to a DOM id prefix + scan endpoint.
+  function makeTPO(prefix, endpoint) {
+    const id = s => document.getElementById(prefix + '-' + s);
+    let tpoMs = 30000, started = false, autoOn = true;
+    let cycleTimer = null, tickTimer = null, nextAt = 0, scanning = false;
+
+    id('auto').addEventListener('change', e => {
+      autoOn = e.target.checked;
+      id('auto-wrap').classList.toggle('paused', !autoOn);
+      if (autoOn) runScan(); else clearTimeout(cycleTimer);
+      tick();
+    });
+    id('refresh').addEventListener('click', () => runScan());
+
+    // chained scheduler — reschedules only after each scan finishes (no overlap)
+    function schedule() {
+      clearTimeout(cycleTimer);
+      if (!autoOn) { nextAt = 0; return; }
+      nextAt = Date.now() + tpoMs;
+      cycleTimer = setTimeout(runScan, tpoMs);
+    }
+    function tick() {
+      const nx = id('next');
+      if (scanning) { nx.textContent = 'refreshing…'; nx.classList.remove('paused'); return; }
+      if (!autoOn) { nx.textContent = 'paused'; nx.classList.add('paused'); return; }
+      nx.classList.remove('paused');
+      nx.textContent = 'next in ' + Math.max(0, Math.round((nextAt - Date.now()) / 1000)) + 's';
+    }
+    async function runScan() {
+      if (scanning) return;
+      scanning = true; clearTimeout(cycleTimer); tick();
+      try { await scan(); } finally { scanning = false; schedule(); tick(); }
+    }
+
+    async function scan() {
+      const meta = id('meta'), body = id('body'), note = id('note');
+      meta.textContent = 'Scanning…';
+      let r; try { r = await api(endpoint); } catch (e) { meta.textContent = 'Scan failed: ' + e.message; return; }
+      if (r.error) { meta.textContent = 'Scan error: ' + r.error; return; }
+      meta.innerHTML = '';
+      const tag = (k, v) => meta.append(el('span', 'tag', `${k} <b>${v}</b>`));
+      tag('universe', r.universe);
+      if (r.indexChangePct != null) tag(r.indexLabel || 'index', (r.indexChangePct >= 0 ? '+' : '') + r.indexChangePct + '%');
+      tag('setups', r.count);
+      tag('updated', new Date(r.ts).toLocaleTimeString());
+      body.innerHTML = '';
+      if (!r.rows.length) {
+        body.innerHTML = `<tr><td colspan="10" class="tpo-empty">No high-quality setups right now (or market closed). Thresholds live in config/markets.json → tpo.${r.market ? ' [' + r.market + ']' : ''}</td></tr>`;
+        note.textContent = r.note || ''; return;
+      }
+      r.rows.forEach(x => {
+        const tr = el('tr');
+        tr.innerHTML = `
+          <td class="sym">${x.symbol}</td>
+          <td class="num">${x.ltp}</td>
+          <td><span class="sig ${x.signal}">${x.signal}</span></td>
+          <td class="num">${x.entry}</td>
+          <td class="num">${x.sl}</td>
+          <td class="num">${x.targets.join(' / ')}</td>
+          <td class="num rr">${x.rr}</td>
+          <td><span class="conf ${x.confidence}">${x.confidence} · ${x.score}</span></td>
+          <td class="reason">${x.reason}</td>`;
+        const td = el('td'), b = el('button', 'btn-confirm', 'Confirm');
+        b.title = 'Load on chart & read live on-chart levels';
+        b.addEventListener('click', () => confirm(x.ticker || x.symbol, b));
+        td.append(b); tr.append(td); body.append(tr);
+      });
+      note.textContent = r.note || '';
+    }
+
+    async function confirm(symbol, btn) {
+      const box = id('confirm'); const old = btn.textContent;
+      btn.disabled = true; btn.textContent = '…';
+      box.classList.remove('hidden');
+      box.innerHTML = `<h3>Confirming ${symbol} on chart…</h3>`;
+      let r;
+      try { r = await api('/api/tpo/confirm', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ symbol }) }); }
+      catch (e) { box.innerHTML = `<h3>${symbol}</h3><div class="prow">Confirm failed: ${e.message}</div>`; btn.disabled = false; btn.textContent = old; return; }
+      btn.disabled = false; btn.textContent = old;
+      if (!r.ok) { box.innerHTML = `<h3>${symbol}</h3><div class="prow">${r.error || 'failed'}</div>`; return; }
+      const L = r.live || {};
+      const lines = [
+        `chart: ${r.chartSymbol || symbol} · ${r.interval || ''}`,
+        `live OHLC: O ${L.open ?? '—'}  H ${L.high ?? '—'}  L ${L.low ?? '—'}  C ${L.close ?? '—'}  (${L.changePct ?? '—'}%)`,
+      ];
+      (r.profileRows || []).forEach(p => lines.push(p));
+      box.innerHTML = `<h3>${r.chartSymbol || symbol} — on-chart confirm</h3>`
+        + lines.map(l => `<div class="prow">${l}</div>`).join('')
+        + `<div class="hint">${r.note || ''}</div>`;
+    }
+
+    return {
+      async start() {
+        if (started) return; started = true;
+        try {
+          const c = await api('/api/config');
+          if (c?.tpo?.refreshSeconds) { tpoMs = c.tpo.refreshSeconds * 1000; id('cycle').textContent = 'every ' + c.tpo.refreshSeconds + 's'; }
+        } catch {}
+        autoOn = id('auto').checked;
+        runScan();
+        clearInterval(tickTimer); tickTimer = setInterval(tick, 1000); tick();
+      },
+      stop() { started = false; clearTimeout(cycleTimer); cycleTimer = null; clearInterval(tickTimer); tickTimer = null; },
+    };
+  }
+
+  const controllers = {
+    tpo: makeTPO('tpo', '/api/tpo/scan'),
+    'tpo-usa': makeTPO('utpo', '/api/tpo/scan/usa'),
+  };
 
   function show(view) {
     tabs.forEach(t => t.classList.toggle('active', t.dataset.view === view));
     Object.entries(views).forEach(([k, elm]) => elm && elm.classList.toggle('hidden', k !== view));
-    if (view === 'tpo') startTPO(); else stopTPO();
+    Object.entries(controllers).forEach(([k, c]) => (k === view ? c.start() : c.stop()));
   }
   tabs.forEach(t => t.addEventListener('click', () => show(t.dataset.view)));
-
-  // auto-refresh controls (top of TPO tab)
-  $('#tpo-auto').addEventListener('change', e => {
-    autoOn = e.target.checked;
-    $('#tpo-auto-wrap').classList.toggle('paused', !autoOn);
-    if (autoOn) runScan(); else clearTimeout(cycleTimer);
-    tick();
-  });
-  $('#tpo-refresh').addEventListener('click', () => runScan());
-
-  // chained scheduler — reschedules only after each scan finishes (no overlap)
-  function schedule() {
-    clearTimeout(cycleTimer);
-    if (!autoOn) { nextAt = 0; return; }
-    nextAt = Date.now() + tpoMs;
-    cycleTimer = setTimeout(runScan, tpoMs);
-  }
-  function tick() {
-    const nx = $('#tpo-next');
-    if (scanning) { nx.textContent = 'refreshing…'; nx.classList.remove('paused'); return; }
-    if (!autoOn) { nx.textContent = 'paused'; nx.classList.add('paused'); return; }
-    nx.classList.remove('paused');
-    nx.textContent = 'next in ' + Math.max(0, Math.round((nextAt - Date.now()) / 1000)) + 's';
-  }
-  async function runScan() {
-    if (scanning) return;
-    scanning = true; clearTimeout(cycleTimer); tick();
-    try { await scan(); } finally { scanning = false; schedule(); tick(); }
-  }
-
-  async function startTPO() {
-    if (tpoStarted) return; tpoStarted = true;
-    try {
-      const c = await api('/api/config');
-      if (c?.tpo?.refreshSeconds) { tpoMs = c.tpo.refreshSeconds * 1000; $('#tpo-cycle').textContent = 'every ' + c.tpo.refreshSeconds + 's'; }
-    } catch {}
-    autoOn = $('#tpo-auto').checked;
-    runScan();
-    clearInterval(tickTimer); tickTimer = setInterval(tick, 1000); tick();
-  }
-  function stopTPO() { tpoStarted = false; clearTimeout(cycleTimer); cycleTimer = null; clearInterval(tickTimer); tickTimer = null; }
-
-  async function scan() {
-    const meta = $('#tpo-meta'), body = $('#tpo-body'), note = $('#tpo-note');
-    meta.textContent = 'Scanning NSE…';
-    let r; try { r = await api('/api/tpo/scan'); } catch (e) { meta.textContent = 'Scan failed: ' + e.message; return; }
-    if (r.error) { meta.textContent = 'Scan error: ' + r.error; return; }
-    meta.innerHTML = '';
-    const tag = (k, v) => meta.append(el('span', 'tag', `${k} <b>${v}</b>`));
-    tag('universe', r.universe);
-    if (r.niftyChangePct != null) tag('NIFTY', (r.niftyChangePct >= 0 ? '+' : '') + r.niftyChangePct + '%');
-    tag('setups', r.count);
-    tag('updated', new Date(r.ts).toLocaleTimeString());
-    body.innerHTML = '';
-    if (!r.rows.length) {
-      body.innerHTML = '<tr><td colspan="10" class="tpo-empty">No high-quality setups right now. Thresholds live in config/markets.json → tpo.</td></tr>';
-      note.textContent = r.note || ''; return;
-    }
-    r.rows.forEach(x => {
-      const tr = el('tr');
-      tr.innerHTML = `
-        <td class="sym">${x.symbol}</td>
-        <td class="num">${x.ltp}</td>
-        <td><span class="sig ${x.signal}">${x.signal}</span></td>
-        <td class="num">${x.entry}</td>
-        <td class="num">${x.sl}</td>
-        <td class="num">${x.targets.join(' / ')}</td>
-        <td class="num rr">${x.rr}</td>
-        <td><span class="conf ${x.confidence}">${x.confidence} · ${x.score}</span></td>
-        <td class="reason">${x.reason}</td>`;
-      const td = el('td'), b = el('button', 'btn-confirm', 'Confirm');
-      b.title = 'Load on chart & read live on-chart levels';
-      b.addEventListener('click', () => confirm(x.ticker || x.symbol, b));
-      td.append(b); tr.append(td); body.append(tr);
-    });
-    note.textContent = r.note || '';
-  }
-
-  async function confirm(symbol, btn) {
-    const box = $('#tpo-confirm'); const old = btn.textContent;
-    btn.disabled = true; btn.textContent = '…';
-    box.classList.remove('hidden');
-    box.innerHTML = `<h3>Confirming ${symbol} on chart…</h3>`;
-    let r;
-    try { r = await api('/api/tpo/confirm', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ symbol }) }); }
-    catch (e) { box.innerHTML = `<h3>${symbol}</h3><div class="prow">Confirm failed: ${e.message}</div>`; btn.disabled = false; btn.textContent = old; return; }
-    btn.disabled = false; btn.textContent = old;
-    if (!r.ok) { box.innerHTML = `<h3>${symbol}</h3><div class="prow">${r.error || 'failed'}</div>`; return; }
-    const L = r.live || {};
-    const lines = [
-      `chart: ${r.chartSymbol || symbol} · ${r.interval || ''}`,
-      `live OHLC: O ${L.open ?? '—'}  H ${L.high ?? '—'}  L ${L.low ?? '—'}  C ${L.close ?? '—'}  (${L.changePct ?? '—'}%)`,
-    ];
-    (r.profileRows || []).forEach(p => lines.push(p));
-    box.innerHTML = `<h3>${r.chartSymbol || symbol} — on-chart confirm</h3>`
-      + lines.map(l => `<div class="prow">${l}</div>`).join('')
-      + `<div class="hint">${r.note || ''}</div>`;
-  }
 })();
