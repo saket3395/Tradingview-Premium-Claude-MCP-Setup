@@ -48,7 +48,7 @@
       "minRVol": 1.2,
       "minAvgVol": 100000,
       "minPrice": 5,
-      "minMarketCap": 300000000,
+      "minMarketCap": 0,
       "top": 40
     }
   }
