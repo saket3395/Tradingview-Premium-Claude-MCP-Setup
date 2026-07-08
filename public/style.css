@@ -98,6 +98,9 @@ footer{color:var(--mut);font-size:11px;text-align:center;padding:14px}
 .tpo-how-note{border-top:1px dashed var(--line);padding-top:8px}
 .tpo-meta{color:var(--mut);font-size:12px;margin-bottom:10px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .tpo-meta .tag{background:#0f141b;border:1px solid var(--line);border-radius:6px;padding:2px 8px}
+.tpo-meta .tag.status-live{color:var(--grn);border-color:#1f3b30;font-weight:600}
+.tpo-meta .tag.status-delayed{color:var(--amb);border-color:#3a3115;font-weight:600}
+.tpo-meta .tag.status-closed{color:var(--mut)}
 .tpo-tablewrap{overflow-x:auto}
 .tpo-table{width:100%;border-collapse:collapse;font-size:12px}
 .tpo-table th{text-align:left;color:var(--mut);font-weight:500;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap;position:sticky;top:0;background:var(--card)}

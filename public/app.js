@@ -188,6 +188,9 @@ async function loadJournal() {
       let r; try { r = await api(endpoint); } catch (e) { meta.textContent = 'Scan failed: ' + e.message; return; }
       if (r.error) { meta.textContent = 'Scan error: ' + r.error; return; }
       meta.innerHTML = '';
+      const st = r.dataStatus || 'unknown';
+      const stLabel = st === 'live' ? '🟢 LIVE' : st === 'delayed' ? ('🔴 delayed' + (r.delayMin ? ' ~' + r.delayMin + 'm' : '')) : st === 'closed' ? '⚪ market closed' : 'status —';
+      meta.append(el('span', 'tag status-' + st, stLabel));
       const tag = (k, v) => meta.append(el('span', 'tag', `${k} <b>${v}</b>`));
       tag('universe', r.universe);
       if (r.indexChangePct != null) tag(r.indexLabel || 'index', (r.indexChangePct >= 0 ? '+' : '') + r.indexChangePct + '%');
