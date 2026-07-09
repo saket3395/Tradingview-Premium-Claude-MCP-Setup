@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>TradingView × Claude MCP — Dashboard</title>
+<title>TradingView × Claude MCP — Intraday Dashboard</title>
 <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
 <header>
-  <div class="brand">TV × Claude <span>MCP Dashboard</span></div>
+  <div class="brand">TV × Claude <span>Intraday MCP</span></div>
   <nav class="tabs" id="tabs">
     <button class="tab active" data-view="dashboard">Dashboard</button>
     <button class="tab" data-view="tpo">India TPO Scanner</button>
@@ -26,7 +26,30 @@
 <main id="view-dashboard">
   <!-- SIGNAL SUMMARY (active chart) -->
   <section class="card span2" id="signal-card">
-    <h2>Signal Summary <small>· active chart</small></h2>
+    <h2>Signal Summary <small>· active chart · intraday decision metrics</small></h2>
+
+    <details class="tpo-how" id="sig-how">
+      <summary>How to Use Signal Summary</summary>
+      <div class="tpo-how-body">
+        <p>Signal Summary reads the indicators <b>already on your active TradingView chart</b> (EMA stack,
+        RSI, Balance of Power, VWAP) and distils them into an at-a-glance intraday read. It does not place
+        trades and never invents data — anything missing from the chart shows as <code>n/a</code>.</p>
+        <p><b>How to combine the metrics:</b> start with <b>Market Bias</b> + <b>Trend</b> (direction),
+        confirm with <b>Signal Strength</b> + <b>Confidence</b> (is the evidence lopsided or conflicted?),
+        sanity-check <b>Volume Confirmation</b> and <b>Risk Level</b>, then read <b>Entry Readiness</b> as the
+        verdict: <b>Ready</b> = aligned high-conviction setup, <b>Wait</b> = directional but not yet clean,
+        <b>Avoid</b> = the <b>Avoid Trade</b> reason tells you why (conflict, chop, or chase risk).</p>
+        <p><b>Metric guide:</b> <b>Market/Long-vs-Short Bias</b> — net directional vote of the on-chart
+        signals · <b>Signal Strength</b> — how one-sided that vote is (0–100) · <b>Confidence</b> —
+        High/Good/Fair from strength · <b>Trend</b> — EMA-stack structure (Up/Down/Sideways) ·
+        <b>Volume Confirmation</b> — rVol read if a volume study is present · <b>Risk Level</b> — elevated on
+        RSI extremes / large moves · <b>Best Setup</b> — the play that fits the current read ·
+        <b>Trade Quality</b> — A/B/C grade · <b>Entry Readiness</b> — Ready / Wait / Avoid.</p>
+        <p class="tpo-how-note">This is a decision aid, not a signal to act blindly — always confirm against
+        price at your own levels and the TPO scanner’s fixed entry/SL/target plan before trading.</p>
+      </div>
+    </details>
+
     <div id="signal-empty" class="empty">Connect TradingView (CDP) to read the active chart.</div>
     <div id="signal-body" class="hidden">
       <div class="sigtop">
@@ -35,6 +58,7 @@
         <div class="bias" id="sig-bias">—</div>
         <div class="px"><span id="sig-close">—</span> <span id="sig-chg" class="chg"></span></div>
       </div>
+      <div class="decision" id="sig-decision"></div>
       <div class="metrics" id="sig-metrics"></div>
       <ul class="signals" id="sig-list"></ul>
     </div>
@@ -54,49 +78,12 @@
     <div class="scan"><div class="scan-head">Fast scan <small>(NSE/BSE watchlist)</small></div><ul class="symlist" id="india-scan"></ul></div>
     <div class="checklist"><div class="scan-head">Trade checklist</div><ul id="india-check"></ul></div>
   </section>
-
-  <!-- USA SWING / OPTIONS -->
-  <section class="card market" id="m-usa">
-    <h2 class="mhead">🇺🇸 USA — Swing / Options <small id="usa-session"></small></h2>
-    <div class="tfs" id="usa-tfs"></div>
-    <div class="scan"><div class="scan-head">Fast scan <small>(US watchlist)</small></div><ul class="symlist" id="usa-scan"></ul></div>
-    <div class="checklist"><div class="scan-head">Trade checklist</div><ul id="usa-check"></ul></div>
-  </section>
-
-  <!-- PINE WORKSPACE -->
-  <section class="card span2" id="pine-card">
-    <h2>Pine Script Workspace</h2>
-    <div class="toolbar">
-      <button id="pine-read">Read from chart</button>
-      <button id="pine-write">Write to editor</button>
-      <button id="pine-compile" class="primary">Compile</button>
-      <span class="grow"></span>
-      <span class="pine-status" id="pine-status"></span>
-    </div>
-    <textarea id="pine-code" spellcheck="false" placeholder="// Pine source — Read from chart, edit, Write, then Compile.&#10;//@version=6&#10;indicator(&quot;My script&quot;, overlay=true)&#10;plot(close)"></textarea>
-    <pre class="console" id="pine-console"></pre>
-  </section>
-
-  <!-- ALERT / JOURNAL -->
-  <section class="card span2" id="journal-card">
-    <h2>Alert / Journal Manager</h2>
-    <form class="jform" id="jform">
-      <select id="j-market"><option value="india_intraday">India intraday</option><option value="usa_swing">USA swing/options</option></select>
-      <input id="j-symbol" placeholder="Symbol" />
-      <select id="j-side"><option value="">side</option><option>Long</option><option>Short</option><option>Call</option><option>Put</option></select>
-      <input id="j-setup" placeholder="Setup / signal" />
-      <input id="j-note" placeholder="Note" class="grow" />
-      <button class="primary" type="submit">Log</button>
-      <a id="j-export" href="/api/journal.csv" download="journal.csv">Export CSV</a>
-    </form>
-    <div class="jlist" id="jlist"></div>
-  </section>
 </main>
 
-<!-- TPO SCANNER (separate view) -->
+<!-- INDIA TPO SCANNER (separate view) -->
 <main id="view-tpo" class="hidden">
   <section class="card span2" id="tpo-card">
-    <h2>India TPO Scanner <small>· NSE intraday · Market-Profile-informed · high-quality only</small></h2>
+    <h2>India TPO Scanner <small>· NSE intraday · Market-Profile-informed · fixed entries · high-quality only</small></h2>
     <div class="tpo-toolbar">
       <label class="pill" id="tpo-auto-wrap"><input type="checkbox" id="tpo-auto" checked /> auto-refresh</label>
       <span class="pill" id="tpo-cycle">every 30s</span>
@@ -104,37 +91,67 @@
       <span class="grow"></span>
       <button id="tpo-refresh" class="btn-confirm">Refresh now</button>
     </div>
+
     <details class="tpo-how" id="tpo-how">
       <summary>How it works</summary>
       <div class="tpo-how-body">
         <p><b>Stage 1 — broad scan (automatic).</b> Every cycle the server queries TradingView's public
-        scanner for the <b>entire NSE universe (~2,900 primary stocks)</b> and scores each one. Data is
-        <b>real but typically ~15 min delayed</b> (real-time NSE needs your logged-in session, which the
-        browser blocks cross-origin). No chart is touched — the scan runs server-side.</p>
-        <p><b>Conviction score (0–100)</b> blends native Market-Profile concepts, all from real fields:
-        <b>Opening Location</b> (gap + open-drive), <b>Value Acceptance/Rejection</b> (position in the day
-        range and price vs the session <b>Pivot</b>), <b>IB / Range-Extension</b> trend-day proxy (range ÷ ATR),
-        <b>Relative Volume</b> conviction, <b>NIFTY alignment</b>, and <b>R:R geometry</b>. Only setups scoring
-        <b>≥70</b> with <b>R:R ≥1.5</b> and <b>rVol ≥1.2</b> are shown, ranked by conviction — thresholds live in
-        <code>config/markets.json → tpo</code>.</p>
-        <p><b>Levels.</b> <b>Entry</b> is a pullback into value (the Pivot) rather than chasing the extreme;
-        <b>SL</b> sits beyond value (tighter of an ATR stop or the day extreme); <b>Targets</b> project range
-        extension beyond the session high/low. <b>R:R</b> falls out of that geometry.</p>
-        <p><b>Stage 2 — confirm (on demand).</b> The <b>Confirm</b> button loads that symbol on your active
-        TradingView chart and reads <b>live OHLC</b> plus any Volume/Market-Profile study present — true
-        POC/VAH/VAL appear only if such a study is on the chart.</p>
-        <p class="tpo-how-note"><b>Honest caveats:</b> the scanner's “VWAP” field is actually the pivot
-        <code>(H+L+C)/3</code>, so it is labeled <b>Pivot</b>, not VWAP. Full letter-by-letter TPO
-        (POC/VAH/VAL/IB/single prints) needs intraday time-at-price and isn’t computable for the whole
-        universe from day-level data — Stage 1 is profile-<i>informed</i>; Stage 2 gives true on-chart levels.</p>
+        scanner for the <b>entire NSE universe (~2,900 primary stocks)</b> and scores each one. NSE streams
+        <b>real-time anonymously</b>. No chart is touched — the scan runs server-side.</p>
+        <p><b>Conviction score (0–100)</b> blends native Market-Profile concepts from real fields:
+        <b>Opening Location</b>, <b>Value Acceptance/Rejection</b>, <b>IB / Range-Extension</b> trend-day
+        proxy, <b>Relative Volume</b>, <b>NIFTY alignment</b>, and <b>R:R geometry</b>. Only setups scoring
+        <b>≥70</b> with <b>R:R ≥1.5</b> and <b>rVol ≥1.2</b> are shown — thresholds in
+        <code>config/markets.json → tpo.india</code>.</p>
+        <p><b>Stage 2 — confirm (on demand).</b> <b>Confirm</b> loads the symbol on your active TradingView
+        chart to read <b>live OHLC</b> and any Volume/Market-Profile study, and fetches the stock's
+        <b>real NSE upper/lower circuit from Upstox</b> to validate the targets/SL.</p>
+        <p class="tpo-how-note"><b>Honest caveats:</b> the scanner's “VWAP” field is the pivot
+        <code>(H+L+C)/3</code> (labeled <b>Pivot</b>, used for scoring only — never for entry). Full
+        letter-by-letter TPO needs intraday time-at-price and isn’t computable for the whole universe from
+        day-level data — Stage 1 is profile-<i>informed</i>; Stage 2 gives true on-chart levels.</p>
       </div>
     </details>
+
+    <details class="tpo-how tpo-trade" id="tpo-trade">
+      <summary>How to Trade This Signal</summary>
+      <div class="tpo-how-body">
+        <p><b>Stable entry, by design.</b> Each entry is anchored to a <b>fixed session level</b> (today’s
+        Open or prior-day close) and <b>frozen the moment the setup first qualifies</b> — it will <b>not</b>
+        drift as the LTP ticks. You get one level you can actually rest an order around all day. The
+        <b>State</b> column tells you what to do with it.</p>
+        <p><b>When to enter.</b> Act when State is <b>VALID</b> — price is in the <b>Entry Zone</b> (a
+        breakout-retest / value-acceptance into the anchor). Prefer a confirmed hold (a candle close holding
+        the level) over the first touch. <b>ARMED</b> = the plan is set but price hasn’t reached the zone —
+        wait and set an alert.</p>
+        <p><b>When NOT to enter.</b> <b>EXTENDED</b> — price already ran &gt;0.5R past entry: do <b>not</b>
+        chase; wait for a pullback into the zone. <b>INVALID</b> — the stop level was reached, setup is dead
+        for the day. <b>EXPIRED</b> — market closed, or under the late-session cutoff (no new intraday
+        entries). <b>TARGET</b> — Target 1 already hit; only manage a runner.</p>
+        <p><b>Entry validity &amp; expiry.</b> The plan is valid for the <b>current session only</b> and
+        frozen per symbol per day. New entries are blocked in the final
+        <code>noNewEntryBeforeCloseMin</code> minutes (default 45) and everything expires at the close.</p>
+        <p><b>SL placement.</b> Fixed at the tighter of the day extreme or a 1-ATR stop beyond the anchor,
+        then <b>clamped to the NSE lower circuit</b> (Stage-1 uses an assumed band; Confirm swaps in the real
+        circuit from Upstox). Never widen the stop; if hit, the setup is invalid.</p>
+        <p><b>Target logic.</b> Two range-extension objectives projected beyond the session extreme, <b>capped
+        at the NSE upper circuit</b> (targets can never sit past the circuit; R:R is recomputed if capped).</p>
+        <p><b>Risk management.</b> Risk a fixed % of capital per trade (size = risk-₹ ÷ |entry−SL|). Book or
+        trail at Target 1; move to breakeven once price clears ~1R. One clean A/High setup beats five
+        marginal ones. Respect the checklist on the Dashboard before committing.</p>
+        <p class="tpo-how-note"><b>Example workflow:</b> spot a <b>VALID</b> LONG → open Dashboard, run the
+        India checklist (index aligned, above VWAP, rVol&gt;1.5) → click <b>Confirm</b> to load the chart and
+        pull the real circuit → enter in the Entry Zone on a hold → hard SL at the shown level → book/trail at
+        Target 1 → square off before 15:20 IST. Analysis only — no orders are placed for you.</p>
+      </div>
+    </details>
+
     <div class="tpo-meta" id="tpo-meta">Loading…</div>
     <div class="tpo-tablewrap">
       <table class="tpo-table" id="tpo-table">
         <thead><tr>
-          <th>Symbol</th><th class="num">LTP</th><th>Signal</th><th class="num">Entry</th>
-          <th class="num">SL</th><th class="num">Targets</th><th class="num">R:R</th>
+          <th>Symbol</th><th class="num">LTP</th><th>Signal</th><th>State</th>
+          <th class="num">Entry</th><th class="num">SL</th><th class="num">Targets</th><th class="num">R:R</th>
           <th>Confidence</th><th>TPO Reason</th><th></th>
         </tr></thead>
         <tbody id="tpo-body"></tbody>
@@ -148,7 +165,7 @@
 <!-- USA TPO SCANNER (separate view) -->
 <main id="view-tpo-usa" class="hidden">
   <section class="card span2" id="utpo-card">
-    <h2>USA TPO Scanner <small>· NASDAQ/NYSE/AMEX intraday · market cap &gt; $300M · high-quality only</small></h2>
+    <h2>USA TPO Scanner <small>· NASDAQ/NYSE/AMEX intraday · fixed entries · high-quality only</small></h2>
     <div class="tpo-toolbar">
       <label class="pill" id="utpo-auto-wrap"><input type="checkbox" id="utpo-auto" checked /> auto-refresh</label>
       <span class="pill" id="utpo-cycle">every 30s</span>
@@ -156,38 +173,59 @@
       <span class="grow"></span>
       <button id="utpo-refresh" class="btn-confirm">Refresh now</button>
     </div>
+
     <details class="tpo-how" id="utpo-how">
       <summary>How it works</summary>
       <div class="tpo-how-body">
         <p><b>Stage 1 — broad scan (automatic).</b> Every cycle the server queries TradingView's public
-        scanner for the <b>entire US universe on NASDAQ/NYSE/AMEX filtered to market cap &gt; $300M
-        (~3,000 primary stocks)</b> and scores each one. Data is <b>real but typically ~15 min delayed</b>
-        (real-time needs your logged-in session, which the browser blocks cross-origin). No chart is
-        touched — the scan runs server-side. Setups appear only during US market hours (09:30–16:00 ET).</p>
-        <p><b>Conviction score (0–100)</b> blends native Market-Profile concepts, all from real fields:
-        <b>Opening Location</b> (gap + open-drive), <b>Value Acceptance/Rejection</b> (position in the day
-        range and price vs the session <b>Pivot</b>), <b>IB / Range-Extension</b> trend-day proxy (range ÷ ATR),
-        <b>Relative Volume</b> conviction, <b>S&amp;P 500 alignment</b>, and <b>R:R geometry</b>. Only setups
-        scoring <b>≥70</b> with <b>R:R ≥1.5</b> and <b>rVol ≥1.2</b> are shown, ranked by conviction —
-        thresholds live in <code>config/markets.json → tpo.usa</code>.</p>
-        <p><b>Levels.</b> <b>Entry</b> is a pullback into value (the Pivot) rather than chasing the extreme;
-        <b>SL</b> sits beyond value (tighter of an ATR stop or the day extreme); <b>Targets</b> project range
-        extension beyond the session high/low. <b>R:R</b> falls out of that geometry.</p>
-        <p><b>Stage 2 — confirm (on demand).</b> The <b>Confirm</b> button loads that symbol on your active
-        TradingView chart and reads <b>live OHLC</b> plus any Volume/Market-Profile study present — true
-        POC/VAH/VAL appear only if such a study is on the chart.</p>
-        <p class="tpo-how-note"><b>Honest caveats:</b> the scanner's “VWAP” field is actually the pivot
-        <code>(H+L+C)/3</code>, so it is labeled <b>Pivot</b>, not VWAP. Full letter-by-letter TPO
-        (POC/VAH/VAL/IB/single prints) needs intraday time-at-price and isn’t computable for the whole
-        universe from day-level data — Stage 1 is profile-<i>informed</i>; Stage 2 gives true on-chart levels.</p>
+        scanner for the <b>US universe on NASDAQ/NYSE/AMEX (~3,000+ primary stocks)</b> and scores each one.
+        Data is <b>real-time with your logged-in TradingView session</b> (15-min delayed otherwise). Setups
+        appear during US market hours (09:30–16:00 ET).</p>
+        <p><b>Conviction score (0–100)</b> blends <b>Opening Location</b>, <b>Value Acceptance/Rejection</b>,
+        <b>IB / Range-Extension</b> trend-day proxy, <b>Relative Volume</b>, <b>S&amp;P 500 alignment</b>, and
+        <b>R:R geometry</b>. Only setups scoring <b>≥70</b> with <b>R:R ≥1.5</b> and <b>rVol ≥1.2</b> are shown
+        — thresholds in <code>config/markets.json → tpo.usa</code>.</p>
+        <p><b>Stage 2 — confirm (on demand).</b> <b>Confirm</b> loads the symbol on your active TradingView
+        chart and reads <b>live OHLC</b> plus any Volume/Market-Profile study present.</p>
+        <p class="tpo-how-note"><b>Honest caveats:</b> the scanner's “VWAP” field is the pivot
+        <code>(H+L+C)/3</code> (labeled <b>Pivot</b>, scoring only — never entry). Full letter-by-letter TPO
+        isn’t computable for the whole universe from day-level data — Stage 1 is profile-<i>informed</i>;
+        Stage 2 gives true on-chart levels. US circuit halts are LULD-based and not shown here.</p>
       </div>
     </details>
+
+    <details class="tpo-how tpo-trade" id="utpo-trade">
+      <summary>How to Trade This Signal</summary>
+      <div class="tpo-how-body">
+        <p><b>Stable entry, by design.</b> Each entry is anchored to a <b>fixed session level</b> (today’s
+        Open or prior-day close) and <b>frozen when the setup first qualifies</b> — it will <b>not</b> drift
+        with the LTP. The <b>State</b> column tells you what to do.</p>
+        <p><b>When to enter.</b> Act when State is <b>VALID</b> — price is in the <b>Entry Zone</b>
+        (breakout-retest / value acceptance). Prefer a confirmed hold over the first touch. <b>ARMED</b> =
+        wait for price to reach the zone.</p>
+        <p><b>When NOT to enter.</b> <b>EXTENDED</b> — ran &gt;0.5R past entry, don’t chase. <b>INVALID</b> —
+        stop reached. <b>EXPIRED</b> — closed / late-session cutoff. <b>TARGET</b> — T1 hit, manage only.</p>
+        <p><b>Entry validity &amp; expiry.</b> Valid for the current session only, frozen per symbol per day.
+        New entries blocked in the final <code>noNewEntryBeforeCloseMin</code> minutes (default 45); all expire
+        at 16:00 ET.</p>
+        <p><b>SL placement.</b> Fixed at the tighter of the day extreme or a 1-ATR stop beyond the anchor.
+        Never widen it; if hit, the setup is invalid. (No circuit clamp on US names.)</p>
+        <p><b>Target logic.</b> Two range-extension objectives projected beyond the session extreme; R:R falls
+        out of the fixed geometry.</p>
+        <p><b>Risk management.</b> Fixed % risk per trade (size = risk-$ ÷ |entry−SL|). Book/trail at Target 1,
+        move to breakeven past ~1R. Favor A/High-grade setups; skip the marginal ones.</p>
+        <p class="tpo-how-note"><b>Example workflow:</b> spot a <b>VALID</b> LONG → confirm SPX/QQQ alignment
+        and rVol → click <b>Confirm</b> to load the chart → enter in the Entry Zone on a hold → hard SL at the
+        shown level → book/trail at Target 1 → flat by the close. Analysis only — no orders are placed.</p>
+      </div>
+    </details>
+
     <div class="tpo-meta" id="utpo-meta">Loading…</div>
     <div class="tpo-tablewrap">
       <table class="tpo-table" id="utpo-table">
         <thead><tr>
-          <th>Symbol</th><th class="num">LTP</th><th>Signal</th><th class="num">Entry</th>
-          <th class="num">SL</th><th class="num">Targets</th><th class="num">R:R</th>
+          <th>Symbol</th><th class="num">LTP</th><th>Signal</th><th>State</th>
+          <th class="num">Entry</th><th class="num">SL</th><th class="num">Targets</th><th class="num">R:R</th>
           <th>Confidence</th><th>TPO Reason</th><th></th>
         </tr></thead>
         <tbody id="utpo-body"></tbody>
@@ -198,7 +236,7 @@
   </section>
 </main>
 
-<footer>Analysis only — no live order execution. Reads the chart tab that is active in TradingView Desktop.</footer>
+<footer>Analysis only — no live order execution. Intraday. Reads the chart tab that is active in TradingView Desktop.</footer>
 <script src="/app.js"></script>
 </body>
 </html>

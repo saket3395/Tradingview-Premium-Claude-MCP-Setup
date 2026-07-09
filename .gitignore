@@ -2,6 +2,8 @@ node_modules/
 .env
 .DS_Store
 data/journal.json
+data/upstox_instruments.json
+data/upstox_token.json
 *.log
 
 # Local TLS certs (mkcert) — never commit private keys

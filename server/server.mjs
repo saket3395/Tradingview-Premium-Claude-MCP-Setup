@@ -4,16 +4,16 @@
 
 import { createServer as createHttpServer } from 'node:http';
 import { createServer as createHttpsServer } from 'node:https';
-import { readFile, readFileSync, writeFile, mkdirSync, existsSync } from 'node:fs';
+import { readFile, readFileSync, mkdirSync, existsSync } from 'node:fs';
 import { readFile as readFileP } from 'node:fs/promises';
 import { join, extname, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  cdpStatus, attachVisibleChart, readChart, readIndicators, readWatchlist,
-  ensurePineOpen, readPine, writePine, compilePine, setSymbol,
+  cdpStatus, attachVisibleChart, readChart, readIndicators, readWatchlist, setSymbol,
 } from '../lib/tv.mjs';
 import { parseSignals } from '../lib/signals.mjs';
-import { scanTPO } from '../lib/tpo.mjs';
+import { scanTPO, clampToCircuit } from '../lib/tpo.mjs';
+import { getCircuit } from '../lib/upstox.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 loadEnv(join(ROOT, '.env'));
@@ -29,7 +29,6 @@ try {
   };
 } catch { tls = null; }
 const DATA = join(ROOT, 'data');
-const JOURNAL = join(DATA, 'journal.json');
 if (!existsSync(DATA)) mkdirSync(DATA, { recursive: true });
 
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml' };
@@ -56,9 +55,6 @@ async function withChart(fn) {
   try { return await fn(cl); } finally { cl.close(); }
 }
 
-async function getJournal() { try { return json(await readFileP(JOURNAL, 'utf8')) || []; } catch { return []; } }
-function saveJournal(entries) { return new Promise(r => writeFile(JOURNAL, JSON.stringify(entries, null, 2), () => r())); }
-
 const routes = {
   'GET /api/status': async () => cdpStatus(),
 
@@ -78,17 +74,7 @@ const routes = {
     } catch (e) { return { status, chart: null, signals: null, watchlist: [], error: e.message }; }
   },
 
-  'GET /api/pine': async () => withChart(async cl => { await ensurePineOpen(cl); return { code: await readPine(cl) }; }),
-
-  'POST /api/pine': async (req) => {
-    const { code } = json(await readBody(req));
-    if (typeof code !== 'string') return { ok: false, error: 'code required' };
-    return withChart(cl => writePine(cl, code));
-  },
-
-  'POST /api/pine/compile': async () => withChart(async cl => { await ensurePineOpen(cl); return compilePine(cl); }),
-
-  // best-effort chart switch (experimental — analysis only)
+  // best-effort chart switch (experimental — analysis only; used by the India fast-scan)
   'POST /api/chart/symbol': async (req) => {
     const { symbol } = json(await readBody(req));
     if (!symbol) return { ok: false, error: 'symbol required' };
@@ -111,51 +97,52 @@ const routes = {
   // chart to it and reads LIVE OHLC (real-time per your TV session) plus any Market
   // Profile / Volume Profile study rows present in the chart legend.
   'POST /api/tpo/confirm': async (req) => {
-    const { symbol } = json(await readBody(req));
+    const { symbol, plan } = json(await readBody(req));
     if (!symbol) return { ok: false, error: 'symbol required' };
     const want = symbol.split(':').pop().toUpperCase().replace(/\s+/g, '');
-    return withChart(async cl => {
+    const isNSE = /^NSE:/i.test(symbol);
+
+    // Real NSE circuit from Upstox (India only) — fetched independently of the chart so it
+    // still returns even if the chart switch fails. Re-clamps the frozen plan to the TRUE
+    // circuit and recomputes R:R; degrades to a note if the token is missing/stale.
+    let circuit = null, adjusted = null;
+    if (isNSE) {
+      const c = await getCircuit(symbol);
+      if (c.ok) {
+        circuit = { ok: true, source: 'upstox', upper: c.upper, lower: c.lower, ltp: c.ltp };
+        if (plan && plan.entry != null && Array.isArray(plan.targets)) {
+          const adj = clampToCircuit(plan, c.upper, c.lower, 'upstox');
+          adjusted = { entry: adj.entry, sl: adj.sl, targets: adj.targets, rr: adj.rr, capped: adj.circuit.capped };
+        }
+      } else {
+        circuit = { ok: false, reason: c.reason, error: c.error };
+      }
+    }
+
+    const chartOut = await withChart(async cl => {
       await setSymbol(cl, symbol);
       const chart = await readChart(cl);
       const got = (chart.symbol || '').toUpperCase().replace(/\s+/g, '');
-      // Guard: the chart switcher is best-effort. If it didn't actually load the
-      // requested symbol, do NOT report another symbol's data as the confirm.
+      // Guard: the chart switcher is best-effort. If it didn't actually load the requested
+      // symbol, do NOT report another symbol's on-chart data as the confirm.
       if (got !== want) {
-        return {
-          ok: false, symbol, chartSymbol: chart.symbol,
-          error: `Chart switch didn't take (chart shows ${chart.symbol || '—'}). Bring a TradingView chart tab to the front and retry.`,
-        };
+        return { ok: false, chartSymbol: chart.symbol,
+          error: `Chart switch didn't take (chart shows ${chart.symbol || '—'}). Bring a TradingView chart tab to the front and retry.` };
       }
       const rows = await readIndicators(cl);
       const live = parseSignals(rows, chart);
       const rx = /POC|VAH|VAL|value area|volume profile|market profile|\bTPO\b|\bVP\b/i;
       const profileRows = rows.filter(r => rx.test(r));
       return {
-        ok: true, symbol, chartSymbol: chart.symbol, interval: chart.intervalShort || chart.interval,
+        ok: true, chartSymbol: chart.symbol, interval: chart.intervalShort || chart.interval,
         live: { open: live.open, high: live.high, low: live.low, close: live.close, changePct: live.changePct },
         profileRows,
         note: profileRows.length ? 'Profile study levels read from chart legend.'
           : 'No Market/Volume Profile study on the chart — showing live OHLC only. Add a TPO/Volume Profile study for true POC/VAH/VAL.',
       };
-    });
-  },
+    }).catch(e => ({ ok: false, error: e.message }));
 
-  'GET /api/journal': async () => getJournal(),
-
-  'POST /api/journal': async (req) => {
-    const e = json(await readBody(req));
-    const entries = await getJournal();
-    const entry = { id: Date.now(), ts: new Date().toISOString(), symbol: e.symbol || '', side: e.side || '', setup: e.setup || '', note: e.note || '', market: e.market || '' };
-    entries.unshift(entry);
-    await saveJournal(entries);
-    return { ok: true, entry };
-  },
-
-  'GET /api/journal.csv': async () => {
-    const entries = await getJournal();
-    const head = 'ts,market,symbol,side,setup,note';
-    const rows = entries.map(e => [e.ts, e.market, e.symbol, e.side, e.setup, (e.note || '').replace(/[\n,]/g, ' ')].map(v => `"${String(v ?? '')}"`).join(','));
-    return { __raw: [head, ...rows].join('\n'), __type: 'text/csv' };
+    return { ok: chartOut.ok, symbol, ...chartOut, circuit, adjusted };
   },
 };
 
