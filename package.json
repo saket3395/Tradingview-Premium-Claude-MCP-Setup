@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Analysis-only dashboard for TradingView Premium Desktop driven via Claude Code + MCP/CDP. India intraday + USA swing/options.",
+  "description": "Analysis-only INTRADAY dashboard for TradingView Premium Desktop driven via Claude Code + MCP/CDP. India + USA TPO scanners with fixed session entries.",
   "engines": { "node": ">=20" },
   "scripts": {
     "start": "node server/server.mjs",

@@ -53,24 +53,22 @@ table.kv{width:100%;border-collapse:collapse}
 .checklist li{display:flex;gap:7px;align-items:flex-start;padding:3px 0;font-size:12px}
 .checklist input{margin-top:2px}
 
-/* pine */
-.toolbar{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+/* buttons (shared) */
 .grow{flex:1}
-button,.jform a{background:#1f2733;border:1px solid var(--line);color:var(--txt);border-radius:6px;padding:5px 11px;cursor:pointer;font-size:12px;text-decoration:none}
+button{background:#1f2733;border:1px solid var(--line);color:var(--txt);border-radius:6px;padding:5px 11px;cursor:pointer;font-size:12px}
 button:hover{border-color:var(--acc)}
-button.primary{background:var(--acc);border-color:var(--acc);color:#fff}
 button:disabled{opacity:.5;cursor:not-allowed}
-.pine-status{font-size:12px;color:var(--mut)}
-textarea#pine-code{width:100%;height:230px;background:#0b0f15;color:#cfe3ff;border:1px solid var(--line);border-radius:8px;padding:10px;font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;resize:vertical}
-.console{background:#0b0f15;border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin:8px 0 0;min-height:34px;white-space:pre-wrap;font:12px/1.5 ui-monospace,monospace;color:var(--mut)}
-.console.err{color:var(--red)} .console.ok{color:var(--grn)}
 
-/* journal */
-.jform{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
-.jform input,.jform select{background:#0b0f15;border:1px solid var(--line);color:var(--txt);border-radius:6px;padding:5px 8px;font-size:12px}
-.jlist{max-height:240px;overflow:auto}
-.jrow{display:grid;grid-template-columns:120px 90px 60px 1fr;gap:8px;padding:5px 4px;border-bottom:1px solid var(--line);font-size:12px}
-.jrow .t{color:var(--mut)} .jrow .s{font-weight:600}
+/* signal-summary decision metrics */
+.decision{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin:4px 0 10px}
+.dtile{background:#0f141b;border:1px solid var(--line);border-radius:8px;padding:7px 9px}
+.dtile.wide{grid-column:1/-1}
+.dtile .dk{color:var(--mut);font-size:10px;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
+.dtile .dv{font-weight:600;font-size:13px}
+.dtile.good{border-color:#1f3b30} .dtile.good .dv{color:var(--grn)}
+.dtile.bad{border-color:#3b2422} .dtile.bad .dv{color:var(--red)}
+.dtile.warn{border-color:#3a3115} .dtile.warn .dv{color:var(--amb)}
+
 footer{color:var(--mut);font-size:11px;text-align:center;padding:14px}
 
 /* tabs */
@@ -121,3 +119,19 @@ footer{color:var(--mut);font-size:11px;text-align:center;padding:14px}
 .tpo-confirm h3{margin:0 0 6px;font-size:13px}
 .tpo-confirm .prow{color:var(--mut);font:12px/1.5 ui-monospace,monospace}
 .tpo-empty{color:var(--mut);padding:14px 4px}
+
+/* signal state + entry zone + circuit */
+.st{padding:2px 7px;border-radius:6px;font-size:11px;font-weight:700;white-space:nowrap}
+.st-VALID{background:#10261f;color:var(--grn)}
+.st-ARMED{background:#1c2740;color:var(--acc)}
+.st-EXTENDED{background:#2a2410;color:var(--amb)}
+.st-TARGET{background:#122a2a;color:#3fb6a8}
+.st-INVALID{background:#2a1716;color:var(--red)}
+.st-EXPIRED{background:#20242c;color:var(--mut)}
+.ttime{color:var(--mut);font-size:10px;margin-top:2px}
+.ezone{color:var(--mut);font-size:10px;font-weight:400;margin-top:2px;white-space:nowrap}
+.capped{color:var(--amb);cursor:help}
+.circ{margin-top:8px;padding:7px 9px;border-radius:6px;font-size:12px;line-height:1.5}
+.circ.ok{background:#0f1c17;border:1px solid #1f3b30;color:var(--txt)}
+.circ.warn{background:#201b0f;border:1px solid #3a3115;color:var(--amb)}
+.tpo-trade .tpo-how-body b{color:var(--txt)}
