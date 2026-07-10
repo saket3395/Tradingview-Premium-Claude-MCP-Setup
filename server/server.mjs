@@ -14,6 +14,9 @@ import {
 import { parseSignals } from '../lib/signals.mjs';
 import { scanTPO, clampToCircuit } from '../lib/tpo.mjs';
 import { getCircuit } from '../lib/upstox.mjs';
+import { summary as journalSummary } from '../lib/journal.mjs';
+import { runBacktest } from '../lib/backtest.mjs';
+import { buildAnalytics } from '../lib/analytics.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 loadEnv(join(ROOT, '.env'));
@@ -91,6 +94,25 @@ const routes = {
   'GET /api/tpo/scan/usa': async () => {
     const cfg = json(await readFileP(join(ROOT, 'config', 'markets.json'), 'utf8'));
     return scanTPO(cfg.tpo?.usa || {}, 'usa');
+  },
+
+  // Testing tab — forward-test journal summary (real recorded plans + outcomes).
+  'GET /api/test/summary': async () => {
+    const cfg = json(await readFileP(join(ROOT, 'config', 'markets.json'), 'utf8'));
+    return journalSummary(cfg.testing?.gates);
+  },
+
+  // Testing tab — 1-minute Upstox replay of journaled India plans (on demand).
+  'POST /api/test/backtest': async () => {
+    const cfg = json(await readFileP(join(ROOT, 'config', 'markets.json'), 'utf8'));
+    return runBacktest(cfg.testing?.gates);
+  },
+
+  // Analytics tab — Monte Carlo + HMM regime + robustness, from real outcomes.
+  'GET /api/analytics': async (req) => {
+    const url = new URL(req.url, `http://localhost:${PORT}`);
+    const riskPct = Number(url.searchParams.get('riskPct')) || 1;
+    return buildAnalytics({ riskPct });
   },
 
   // TPO Scanner — Stage 2: on-demand deep confirm for one symbol. Switches the visible

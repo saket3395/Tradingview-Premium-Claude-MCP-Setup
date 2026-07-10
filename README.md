@@ -56,6 +56,17 @@ monitor) — the dashboard reads whichever chart tab is currently active.
 | India — Intraday | Timeframes, **fast scan** of NSE/BSE watchlist, intraday trade checklist | watchlist + `config/markets.json` |
 | India TPO Scanner | Full-NSE-universe profile-informed scan with **fixed entries, State, SL, circuit-capped targets, R:R**, on-chart **Confirm** (+ real Upstox circuit) and a *How to Trade This Signal* guide | `GET /api/tpo/scan`, `POST /api/tpo/confirm` |
 | USA TPO Scanner | Same engine for NASDAQ/NYSE/AMEX (no circuit clamp) | `GET /api/tpo/scan/usa` |
+| Testing | **Forward-test journal** of every frozen plan (a plan only counts toward PF/win-rate once it actually reached VALID — never-filled plans are "missed"), pass/fail **gates (PF ≥1.5 · WR ≥40% · R:R ≥1:2, n≥20)**, breakdowns by market/setup/confidence, and an on-demand **India 1-minute backtest** replaying journaled plans against real Upstox candles | `GET /api/test/summary`, `POST /api/test/backtest`, `data/journal.json` |
+| Analytics | **Monte Carlo** bootstrap of realized R-multiples (equity bands, max-DD, risk-of-ruin), **Gaussian HMM market regime** on real NIFTY daily returns (+ per-regime strategy PF/WR), and **robustness** (expectancy ±SE, SQN, threshold sensitivity, rolling PF) — all from real journal outcomes, never simulated prices | `GET /api/analytics` |
+
+### Pre-expansion scanner logic (v2)
+Each signal now carries a **Setup archetype** — `OPEN-DRIVE` (early one-sided auction, gap-aligned),
+`IB-COIL` (range still compressed vs ATR but price holding the directional third on volume — the
+pre-breakout state), `VALUE-EDGE` (opened beyond prior close, pullback being accepted — 80%-rule style),
+or `EXPANSION` (move already happened; kept but score-penalized) — plus an **EQ (Entry Quality, 0–100)**
+column combining an anti-chase penalty (day range vs ATR), time-of-day decay (post-IB structure fades),
+and volume. Extension no longer earns entry points: an extended day proves direction, not entry.
+The Signal Summary adds **Conviction, Location vs value (VWAP), Session phase** and a one-line verdict.
 
 - **Fast scan**: your TradingView watchlist split by market (exchange prefix). Click a symbol
   to load it on the active chart (best-effort switch).

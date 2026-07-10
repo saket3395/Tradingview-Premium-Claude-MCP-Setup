@@ -13,6 +13,8 @@
     <button class="tab active" data-view="dashboard">Dashboard</button>
     <button class="tab" data-view="tpo">India TPO Scanner</button>
     <button class="tab" data-view="tpo-usa">USA TPO Scanner</button>
+    <button class="tab" data-view="testing">Testing</button>
+    <button class="tab" data-view="analytics">Analytics</button>
   </nav>
   <div class="status" id="status">
     <span class="pill" id="pill-cdp">CDP …</span>
@@ -58,6 +60,7 @@
         <div class="bias" id="sig-bias">—</div>
         <div class="px"><span id="sig-close">—</span> <span id="sig-chg" class="chg"></span></div>
       </div>
+      <div class="verdict" id="sig-verdict"></div>
       <div class="decision" id="sig-decision"></div>
       <div class="metrics" id="sig-metrics"></div>
       <ul class="signals" id="sig-list"></ul>
@@ -150,8 +153,9 @@
     <div class="tpo-tablewrap">
       <table class="tpo-table" id="tpo-table">
         <thead><tr>
-          <th>Symbol</th><th class="num">LTP</th><th>Signal</th><th>State</th>
+          <th>Symbol</th><th class="num">LTP</th><th>Signal</th><th>Setup</th><th>State</th>
           <th class="num">Entry</th><th class="num">SL</th><th class="num">Targets</th><th class="num">R:R</th>
+          <th class="num" title="Entry Quality — how chaseable this is right now (anti-extension + time-of-day + volume)">EQ</th>
           <th>Confidence</th><th>TPO Reason</th><th></th>
         </tr></thead>
         <tbody id="tpo-body"></tbody>
@@ -224,8 +228,9 @@
     <div class="tpo-tablewrap">
       <table class="tpo-table" id="utpo-table">
         <thead><tr>
-          <th>Symbol</th><th class="num">LTP</th><th>Signal</th><th>State</th>
+          <th>Symbol</th><th class="num">LTP</th><th>Signal</th><th>Setup</th><th>State</th>
           <th class="num">Entry</th><th class="num">SL</th><th class="num">Targets</th><th class="num">R:R</th>
+          <th class="num" title="Entry Quality — how chaseable this is right now (anti-extension + time-of-day + volume)">EQ</th>
           <th>Confidence</th><th>TPO Reason</th><th></th>
         </tr></thead>
         <tbody id="utpo-body"></tbody>
@@ -233,6 +238,71 @@
     </div>
     <div class="tpo-confirm hidden" id="utpo-confirm"></div>
     <div class="hint" id="utpo-note"></div>
+  </section>
+</main>
+
+<!-- TESTING (strategy evaluation vs gates) -->
+<main id="view-testing" class="hidden">
+  <section class="card span2">
+    <h2>Testing <small>· forward-test journal (real scanner plans, real outcomes) · gates: PF ≥1.5 · WR ≥40% · R:R ≥1:2</small></h2>
+    <details class="tpo-how">
+      <summary>How Testing works (no mock data)</summary>
+      <div class="tpo-how-body">
+        <p><b>Forward-test journal.</b> Every plan the TPO scanners freeze is recorded automatically. A plan
+        only <b>counts as a trade</b> once price actually traded into the entry zone (state reached
+        <b>VALID</b>) — what a real trader could have filled. Plans that ran to target or stop without
+        filling are tracked separately as <b>missed</b> (fill-rate), never in PF/WR.</p>
+        <p><b>Outcomes:</b> WIN = Target-1 hit (realized R = planned R:R) · LOSS = stop hit (−1R) ·
+        SCRATCH = session expired, marked at the last price. Stats need <b>n ≥ 20</b> closed trades before
+        gates show pass/fail — until then they read <i>insufficient sample</i>, honestly.</p>
+        <p><b>India 1-minute backtest.</b> The button below replays every journaled India plan against real
+        <b>Upstox 1-minute historical candles</b> — exact fills, stop-outs and targets (conservative: if one
+        candle touches both stop and target it counts as a loss). Needs your daily Upstox token. USA stays
+        forward-test only — there is no free intraday history source, and this dashboard never fabricates data.</p>
+      </div>
+    </details>
+    <div class="tpo-toolbar">
+      <button id="test-refresh" class="btn-confirm">Refresh</button>
+      <button id="test-backtest" class="btn-confirm">Run India 1-min backtest</button>
+      <span class="pill" id="test-updated">—</span>
+    </div>
+    <div class="tpo-meta" id="test-gates"></div>
+    <div class="decision" id="test-overall"></div>
+    <h2>Breakdown <small>· by market / setup / confidence</small></h2>
+    <div class="tpo-tablewrap"><table class="tpo-table" id="test-breakdown"></table></div>
+    <div class="tpo-confirm hidden" id="test-bt"></div>
+    <h2 style="margin-top:12px">Recent journal <small>· last 100 plans</small></h2>
+    <div class="tpo-tablewrap">
+      <table class="tpo-table"><thead><tr>
+        <th>Date</th><th>Mkt</th><th>Symbol</th><th>Setup</th><th>Signal</th>
+        <th class="num">Entry</th><th class="num">SL</th><th class="num">T1</th><th class="num">R:R</th>
+        <th class="num">EQ</th><th>Status</th><th>Outcome</th><th class="num">R</th>
+      </tr></thead><tbody id="test-body"></tbody></table>
+    </div>
+    <div class="hint" id="test-note"></div>
+  </section>
+</main>
+
+<!-- ANALYTICS (Monte Carlo · HMM regime · robustness) -->
+<main id="view-analytics" class="hidden">
+  <section class="card span2">
+    <h2>Analytics <small>· Monte Carlo · HMM market regime · robustness — computed from real journal outcomes only</small></h2>
+    <div class="tpo-toolbar">
+      <button id="ana-refresh" class="btn-confirm">Refresh</button>
+      <label class="pill">risk/trade <select id="ana-risk"><option>0.5</option><option selected>1</option><option>2</option></select>%</label>
+      <span class="pill" id="ana-updated">—</span>
+    </div>
+    <h2>Monte Carlo <small>· 5,000 bootstrap resamples of realized R-multiples</small></h2>
+    <div class="decision" id="ana-mc-tiles"></div>
+    <div id="ana-mc-chart"></div>
+    <h2 style="margin-top:14px">Market regime — Hidden Markov Model <small>· Gaussian HMM on NIFTY daily returns (Upstox)</small></h2>
+    <div class="decision" id="ana-hmm-tiles"></div>
+    <div class="tpo-tablewrap"><table class="tpo-table" id="ana-hmm-table"></table></div>
+    <h2 style="margin-top:14px">Robustness <small>· expectancy stability &amp; threshold sensitivity</small></h2>
+    <div class="decision" id="ana-rob-tiles"></div>
+    <div class="tpo-tablewrap"><table class="tpo-table" id="ana-rob-table"></table></div>
+    <div id="ana-rob-chart"></div>
+    <div class="hint" id="ana-note"></div>
   </section>
 </main>
 

@@ -2,8 +2,18 @@
   "markets": {
     "india_intraday": {
       "label": "🇮🇳 India — Intraday",
-      "exchanges": ["NSE", "BSE", "NSE:", "BSE:"],
-      "timeframes": ["1m", "3m", "5m", "15m"],
+      "exchanges": [
+        "NSE",
+        "BSE",
+        "NSE:",
+        "BSE:"
+      ],
+      "timeframes": [
+        "1m",
+        "3m",
+        "5m",
+        "15m"
+      ],
       "session": "09:15–15:30 IST",
       "checklist": [
         "Index trend (NIFTY/BANKNIFTY) aligned with trade",
@@ -17,6 +27,14 @@
     }
   },
   "pollSeconds": 7,
+  "testing": {
+    "gates": {
+      "pf": 1.5,
+      "wr": 40,
+      "rr": 2.0,
+      "minN": 20
+    }
+  },
   "tpo": {
     "refreshSeconds": 30,
     "noNewEntryBeforeCloseMin": 45,
@@ -27,7 +45,8 @@
       "minAvgVol": 50000,
       "minPrice": 20,
       "top": 40,
-      "circuitBandPct": 10
+      "circuitBandPct": 10,
+      "minEntryQuality": 45
     },
     "usa": {
       "minScore": 70,
@@ -36,7 +55,8 @@
       "minAvgVol": 100000,
       "minPrice": 5,
       "minMarketCap": 0,
-      "top": 40
+      "top": 40,
+      "minEntryQuality": 45
     }
   }
 }

@@ -135,3 +135,18 @@ footer{color:var(--mut);font-size:11px;text-align:center;padding:14px}
 .circ.ok{background:#0f1c17;border:1px solid #1f3b30;color:var(--txt)}
 .circ.warn{background:#201b0f;border:1px solid #3a3115;color:var(--amb)}
 .tpo-trade .tpo-how-body b{color:var(--txt)}
+
+/* ---- verdict line (Signal Summary 2-second read) ---- */
+.verdict{margin:2px 0 10px;padding:7px 11px;border-radius:8px;font-weight:700;font-size:13px;background:#0f141b;border:1px solid var(--line)}
+.verdict.good{color:var(--grn);border-color:#1f3b30}
+.verdict.bad{color:var(--red);border-color:#3b2422}
+.verdict.warn{color:var(--amb);border-color:#3a3115}
+
+/* ---- setup archetype + entry-quality badges (TPO tables) ---- */
+.setup{font-size:10px;font-weight:700;letter-spacing:.3px;border-radius:5px;padding:2px 6px;background:#0f141b;border:1px solid var(--line);color:var(--mut);white-space:nowrap}
+.setup-OPEN-DRIVE{color:var(--grn);border-color:#1f3b30}
+.setup-IB-COIL{color:#4c8dff;border-color:#1e3050}
+.setup-VALUE-EDGE{color:var(--amb);border-color:#3a3115}
+.setup-EXPANSION{color:var(--mut)}
+.eq{font-variant-numeric:tabular-nums;font-weight:600}
+.eq.good{color:var(--grn)} .eq.low{color:var(--red)}
