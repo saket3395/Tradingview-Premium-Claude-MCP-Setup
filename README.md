@@ -80,8 +80,11 @@ npm run tv -- pine:compile
   (`minScore`/`minRR`/`minRVol`/…). `tpo.india.circuitBandPct` is the **assumed** Stage-1 circuit
   band (default 10%); Confirm replaces it with the real Upstox circuit.
 - `.env` — `PORT`, `TV_CDP`, `TV_NO_ACTIVATE`, and `UPSTOX_TOKEN_FILE` (path to a JSON
-  `{"access_token":"…","minted":"…"}`; used only for real NSE circuit at Confirm; **expires daily
-  03:30 IST** — refresh it, or Confirm falls back to the assumed band and says so).
+  `{"access_token":"…"}`; used only for real NSE circuit at Confirm). **Recommended:** an Upstox
+  **Analytics token** — read-only, **~1-year validity**, supports the Market Quote API, and needs
+  **no daily refresh** (generate once from the Upstox Developer Apps page → *Analytics* tab). A
+  normal OAuth access token also works but expires daily 03:30 IST. Absent/expired ⇒ Confirm falls
+  back to the assumed band and says so.
 
 ## Use with Claude Code (MCP)
 `.mcp.json` wires Google's `chrome-devtools-mcp` to the same CDP endpoint, so Claude can read
@@ -101,8 +104,9 @@ hidden tabs' DOM).
 - **TPO Stage-1 is profile-*informed*** from day-level scanner data (full letter-by-letter TPO
   needs intraday time-at-price). The scanner's "VWAP" field is the pivot `(H+L+C)/3`, used for
   scoring only — never for entry. Use **Confirm** for true on-chart levels.
-- **Real NSE circuit** needs a fresh Upstox token; without one, Stage-1's assumed band applies and
-  Confirm labels it honestly. NSE's own API is Akamai/bot-blocked server-side, hence Upstox.
+- **Real NSE circuit** needs a valid Upstox token (an Analytics token lasts ~1 year — no daily
+  refresh); without one, Stage-1's assumed band applies and Confirm labels it honestly. NSE's own
+  API is Akamai/bot-blocked server-side, hence Upstox.
 
 ## Project layout
 ```
