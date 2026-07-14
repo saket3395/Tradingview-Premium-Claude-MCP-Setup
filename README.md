@@ -133,4 +133,19 @@ pine/               example Pine scripts (CLI only)
 .mcp.json           chrome-devtools-mcp wiring for Claude Code
 ```
 
-Analysis only. Not financial advice.
+## Disclaimer
+
+This software is for **analysis and education only**. It is **not financial advice**, and it
+contains **no order-execution code by design**. Trading involves substantial risk of loss;
+nothing produced by this tool (signals, states, backtests, analytics) is a recommendation to
+buy or sell any security. Use entirely at your own risk.
+
+This project is not affiliated with, endorsed by, or sponsored by TradingView, Upstox, or
+Anthropic. It reads **your own** logged-in TradingView Desktop session locally via the Chrome
+DevTools Protocol — you are responsible for complying with the terms of service of TradingView,
+your broker, and your data providers. It does not scrape, store, or redistribute market data.
+
+## License
+
+[MIT](LICENSE) © Saket Tulsan. See also [CONTRIBUTING.md](CONTRIBUTING.md),
+[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md), and [SECURITY.md](SECURITY.md).
