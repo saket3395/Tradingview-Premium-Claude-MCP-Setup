@@ -1,0 +1,36 @@
+name: Bug report
+description: Something isn't working (dashboard, scanner, CDP bridge)
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. npm run tv:debug
+        2. npm start
+        3. Open the India TPO Scanner tab
+        4. ...
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      description: macOS version, Node version (node -v), TradingView Desktop version
+      placeholder: macOS 15.5, Node 22.1, TradingView 2.9.x
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs / console output
+      description: Server terminal output or browser console errors. Remove anything sensitive.
+      render: shell
