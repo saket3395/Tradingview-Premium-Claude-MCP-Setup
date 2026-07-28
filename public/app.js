@@ -140,7 +140,7 @@ async function switchSymbol(sym) {
 // ---------- tabs + TPO scanners (India + USA share one implementation) ----------
 (function wireTabsAndTPO() {
   const views = { dashboard: $('#view-dashboard'), tpo: $('#view-tpo'), 'tpo-usa': $('#view-tpo-usa'),
-    patterns: $('#view-patterns'), vcp: $('#view-vcp'),
+    patterns: $('#view-patterns'), vcp: $('#view-vcp'), elliott: $('#view-elliott'),
     testing: $('#view-testing'), analytics: $('#view-analytics') };
   const tabs = [...document.querySelectorAll('#tabs .tab')];
 
@@ -729,9 +729,129 @@ async function switchSymbol(sym) {
     };
   }
 
+  // ---------- Elliott Wave ----------
+  // Primary count first, then the alternates that remain rule-valid. The invalidation
+  // level is given its own line because it is the only number here that is objective.
+  function makeElliott() {
+    const combo = makeCombo('ew', () => run());
+    const esc = combo.esc;
+    const fmt = x => x == null ? '\u2014' : x;
+    const num = x => x == null ? '\u2014' : (x > 0 ? '+' : '') + x;
+    const cCls = c => c >= 65 ? 'good' : c >= 45 ? 'warn' : '';
+    const yn = v => v == null ? '<span class="warn">n/a</span>' : v ? '<span class="good">\u2713</span>' : '<span class="bad">\u2717</span>';
+    let autoRan = false, busy = false;
+
+    async function run() {
+      const sym = $('#ew-symbol').value.trim();
+      if (!sym || busy) return;
+      SELECTED_SYMBOL = sym;
+      busy = true;
+      $('#ew-note').textContent = `Counting waves for ${sym} across four degrees\u2026`;
+      let r;
+      try { r = await api('/api/elliott?symbol=' + encodeURIComponent(sym)); }
+      catch (e) { r = { ok: false, error: e.message }; }
+      busy = false;
+      $('#ew-updated').textContent = 'updated ' + new Date().toLocaleTimeString();
+      if (!r || !r.ok) {
+        $('#ew-body').classList.add('hidden');
+        $('#ew-empty').classList.remove('hidden');
+        $('#ew-empty').textContent = `No wave analysis for ${sym} \u2014 ${r?.error || 'request failed'}`;
+        $('#ew-src').textContent = '\u2014'; $('#ew-note').textContent = '';
+        return;
+      }
+      $('#ew-empty').classList.add('hidden');
+      $('#ew-body').classList.remove('hidden');
+      $('#ew-src').textContent = (r.market === 'india' ? '\ud83c\uddee\ud83c\uddf3 NSE' : '\ud83c\uddfa\ud83c\uddf8 US') + ' \u00b7 real OHLC';
+      $('#ew-note').textContent = 'Source: ' + r.source + ' \u00b7 Scope: ' + r.scope;
+
+      const p = r.primary;
+      const d = $('#ew-primary'); d.innerHTML = '';
+      const tile = (k, v, cls) => { const t = el('div', 'dtile' + (cls ? ' ' + cls : '')); t.append(el('div', 'dk', k), el('div', 'dv', String(fmt(v)))); d.append(t); };
+      tile('Symbol', r.symbol);
+      tile('Price', r.price);
+      if (!p) {
+        tile('Count', 'none valid', 'warn');
+        $('#ew-invalidation').innerHTML = '<span class="tag status-delayed">No rule-valid impulse or simple correction on any timeframe \u2014 an honest "no count", not a failure.</span>';
+        ['ew-waves', 'ew-rules', 'ew-projections', 'ew-alternates', 'ew-personality'].forEach(id => { document.getElementById(id).innerHTML = ''; });
+        $('#ew-nesting').innerHTML = '';
+        $('#ew-conclusion').innerHTML = r.conclusion.map(c => `<li>${esc(c)}</li>`).join('');
+        return;
+      }
+      tile('Timeframe', `${p.timeframe} (${p.degree})`);
+      tile('Structure', p.structure, p.structure === 'Impulse' ? 'good' : '');
+      tile('Position', p.position);
+      tile('State', p.inProgress ? 'in progress' : 'complete', p.inProgress ? 'warn' : 'good');
+      tile('Confidence', p.confidence + '%', cCls(p.confidence));
+      tile('Hard rules', p.ruleCompliance, p.ruleCompliance.split('/')[0] === p.ruleCompliance.split('/')[1] ? 'good' : 'bad');
+      tile('Guideline score', p.guidelineScore + '/10', p.guidelineScore >= 7 ? 'good' : p.guidelineScore >= 5 ? 'warn' : '');
+      tile('Chart explained', p.coverage + '%');
+      tile('Swing threshold', p.swingThreshold);
+      $('#ew-invalidation').innerHTML =
+        `<span class="tag status-live"><b>INVALIDATION ${p.invalidation}</b></span>`
+        + `<span class="tag">${esc(p.invalidationRule)}</span>`
+        + `<span class="tag">beyond this price the count is dead and must be re-labelled</span>`;
+
+      $('#ew-waves').innerHTML = `<tr><th>Wave</th><th class="num">From</th><th class="num">To</th>
+        <th class="num">Move</th><th class="num">Size (ATR)</th><th class="num">Bars</th><th>Fibonacci ratio</th></tr>`
+        + p.waves.map(w => `<tr><td><b>${esc(w.label)}</b>${w.provisional ? ' <small>in progress</small>' : ''}</td>
+            <td class="num">${w.from}</td><td class="num">${w.to}</td><td class="num">${num(w.movePct)}%</td>
+            <td class="num">${w.atr}</td><td class="num">${w.bars}</td><td>${w.fib ? esc(w.fib) : '\u2014'}</td></tr>`).join('');
+
+      $('#ew-rules').innerHTML = `<tr><th>Rule</th><th>Requirement</th><th>Result</th><th>Measured</th></tr>`
+        + p.rules.map(x => `<tr><td>${x.id}</td><td>${esc(x.label)}</td>
+            <td class="${x.pass ? 'good' : 'bad'}"><b>${x.pass ? '\u2713 holds' : '\u2717 broken'}</b></td>
+            <td>${esc(x.detail)}</td></tr>`).join('');
+
+      $('#ew-projections').innerHTML = p.projections.length
+        ? `<tr><th>Target</th><th>Basis</th><th class="num">Price</th><th class="num">Distance</th></tr>`
+          + p.projections.map(x => `<tr><td><b>${esc(x.label)}</b></td><td>${esc(x.basis)}</td>
+              <td class="num">${x.price}</td><td class="num">${num(x.distPct)}%</td></tr>`).join('')
+        : `<tr><td class="hint">No standard projection applies at this wave position.</td></tr>`;
+
+      $('#ew-alternates').innerHTML = r.alternates.length
+        ? `<tr><th>Structure</th><th>Direction</th><th>Position</th><th>Degree</th><th class="num">Confidence</th>
+           <th class="num">Guideline</th><th class="num">Invalidation</th><th>Why it differs</th></tr>`
+          + r.alternates.map(a => `<tr><td><b>${esc(a.structure)}</b></td><td>${esc(a.direction)}</td>
+              <td>${esc(a.position)}</td><td>${esc(a.degree)}</td>
+              <td class="num ${cCls(a.confidence)}">${a.confidence}%</td><td class="num">${a.guidelineScore}/10</td>
+              <td class="num">${a.invalidation}</td><td>${esc(a.from || 'alternate reading')}</td></tr>`).join('')
+        : `<tr><td class="hint">No other rule-valid count \u2014 unusually unambiguous, but still only one interpretation.</td></tr>`;
+
+      $('#ew-nesting').innerHTML = `<tr><th>Timeframe</th><th>Degree</th><th>Structure</th><th>Position</th>
+        <th>Direction</th><th class="num">Confidence</th><th class="num">Invalidation</th></tr>`
+        + r.nesting.map(n => `<tr><td>${esc(n.tf)}</td><td>${esc(n.degree)}</td><td>${esc(n.structure)}</td>
+            <td>${esc(n.position)}</td><td>${esc(n.direction)}</td>
+            <td class="num ${cCls(n.confidence)}">${n.confidence}%</td><td class="num">${n.invalidation}</td></tr>`).join('')
+        + `<tr><td colspan="7" class="${r.aligned ? 'good' : 'warn'}">${r.aligned
+            ? 'All counted degrees agree on direction \u2014 nesting is consistent.'
+            : 'Degrees disagree on direction \u2014 low conviction; defer to the higher degree.'}</td></tr>`;
+
+      $('#ew-personality').innerHTML = `<tr><th>Check</th><th>Result</th><th>Detail</th></tr>`
+        + p.personality.map(x => `<tr><td>${esc(x.check)}</td><td>${yn(x.pass)}</td><td>${esc(x.detail)}</td></tr>`).join('');
+
+      $('#ew-conclusion').innerHTML = r.conclusion.map(c => `<li>${esc(c)}</li>`).join('');
+    }
+
+    let wired = false;
+    return {
+      start() {
+        if (!wired) {
+          wired = true;
+          combo.wire();
+          $('#ew-run').addEventListener('click', () => { combo.close(); run(); });
+        }
+        const want = SELECTED_SYMBOL || CHART_SYMBOL;
+        if (want && $('#ew-symbol').value !== want) { $('#ew-symbol').value = want; autoRan = false; }
+        if (!autoRan && $('#ew-symbol').value) { autoRan = true; run(); }
+      },
+      stop() {},
+    };
+  }
+
   const controllers = {
     patterns: makePatterns(),
     vcp: makeVCP(),
+    elliott: makeElliott(),
     tpo: makeTPO('tpo', '/api/tpo/scan'),
     'tpo-usa': makeTPO('utpo', '/api/tpo/scan/usa'),
     testing: makeTesting(),

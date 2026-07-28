@@ -15,6 +15,7 @@
     <button class="tab" data-view="tpo-usa">USA TPO Scanner</button>
     <button class="tab" data-view="patterns">Pattern Analysis</button>
     <button class="tab" data-view="vcp">VCP Analysis</button>
+    <button class="tab" data-view="elliott">Elliott Wave</button>
     <button class="tab" data-view="testing">Testing</button>
     <button class="tab" data-view="analytics">Analytics</button>
   </nav>
@@ -385,6 +386,87 @@
       <ul class="signals" id="vcp-conclusion"></ul>
     </div>
     <div class="hint" id="vcp-note"></div>
+  </section>
+</main>
+
+<!-- ELLIOTT WAVE ANALYSIS -->
+<main id="view-elliott" class="hidden">
+  <section class="card span2" id="ew-card">
+    <h2>Elliott Wave Analysis <small>· primary count + alternates · degree nesting · explicit invalidation</small></h2>
+    <div class="tpo-toolbar">
+      <div class="pat-combo">
+        <input id="ew-symbol" class="pat-input" placeholder="Search a symbol — e.g. RELIANCE, INFY, AAPL"
+               spellcheck="false" autocomplete="off" role="combobox" aria-expanded="false"
+               aria-autocomplete="list" aria-controls="ew-suggest" />
+        <ul class="pat-suggest hidden" id="ew-suggest" role="listbox"></ul>
+      </div>
+      <button id="ew-run" class="btn-confirm">Analyze</button>
+      <span class="pill" id="ew-src">—</span>
+      <span class="grow"></span>
+      <span class="pill" id="ew-updated">—</span>
+    </div>
+
+    <details class="tpo-how" id="ew-how">
+      <summary>How this analysis works — and what it cannot do</summary>
+      <div class="tpo-how-body">
+        <p><b>Read this first.</b> An algorithm produces <b>one rule-valid count out of several</b>. A wave
+        count is an <i>interpretation</i>, not a measurement, and it <b>re-labels as new bars print</b> —
+        with the ambiguity worst at the right-hand edge, which is exactly where you would want to trade.
+        This tab therefore always shows <b>alternate counts</b> beside the primary one, and confidence is
+        <b>capped at 75%</b>: a wave count should never present itself as being as certain as a moving average.
+        <b>Trade the invalidation level, not the label.</b></p>
+        <p><b>The three hard rules are absolute.</b> A count breaking any one is <b>discarded outright</b>,
+        never shown with a lower score: <b>R1</b> wave 2 never retraces more than 100% of wave 1 ·
+        <b>R2</b> wave 3 is never the shortest of waves 1, 3 and 5 · <b>R3</b> wave 4 never enters wave 1&rsquo;s
+        price territory. Everything else — Fibonacci proportion, alternation, channelling, volume and
+        momentum personality — is a <b>guideline</b> and only contributes to the score.</p>
+        <p><b>Where alternates come from.</b> Swings are extracted with a ZigZag at <b>four significance
+        thresholds</b> (1.0&times; to 3.8&times; ATR). Different thresholds legitimately resolve different degrees
+        — which is precisely where genuine disagreement between analysts comes from. Every rule-valid
+        reading is kept and ranked.</p>
+        <p><b>Ranking.</b> Counts are scored on guideline conformance, on <b>how much of the chart they
+        actually explain</b> (a count spanning three months beats one labelling the last fortnight), and with
+        a structural preference for the five-wave impulse over a three-wave correction. Counts covering less
+        than a quarter of the window are dropped as right-edge noise.</p>
+        <p><b>Degrees are nested by timeframe:</b> Monthly = <b>Primary</b> ①②③ · Weekly =
+        <b>Intermediate</b> (1)(2)(3) · Daily = <b>Minor</b> 1 2 3 · 4H = <b>Minute</b> (i)(ii)(iii). The
+        Daily count is treated as the actionable one; the nesting table shows whether the degrees agree.</p>
+        <p class="tpo-how-note"><b>Scope (deliberate):</b> impulses and <b>simple</b> corrections — zigzag,
+        flat and contracting triangle. <b>Diagonals, truncations and complex combinations (WXY, double and
+        triple threes) are not counted.</b> Where the structure is one of those, this reports <i>no valid
+        count</i> rather than forcing a label it cannot justify — an empty result is an honest answer.
+        Analysis only; no orders are placed.</p>
+      </div>
+    </details>
+
+    <div id="ew-empty" class="empty">Enter a symbol and press Analyze. The box prefills from your active TradingView chart.</div>
+    <div id="ew-body" class="hidden">
+      <h2>Primary Count</h2>
+      <div class="decision" id="ew-primary"></div>
+      <div class="tpo-meta" id="ew-invalidation"></div>
+
+      <h2 style="margin-top:14px">Wave Structure</h2>
+      <div class="tpo-tablewrap"><table class="tpo-table" id="ew-waves"></table></div>
+
+      <h2 style="margin-top:14px">Hard Rules <small>· all must hold or the count is discarded</small></h2>
+      <div class="tpo-tablewrap"><table class="tpo-table" id="ew-rules"></table></div>
+
+      <h2 style="margin-top:14px">Fibonacci Projections</h2>
+      <div class="tpo-tablewrap"><table class="tpo-table" id="ew-projections"></table></div>
+
+      <h2 style="margin-top:14px">Alternate Counts <small>· all rule-valid</small></h2>
+      <div class="tpo-tablewrap"><table class="tpo-table" id="ew-alternates"></table></div>
+
+      <h2 style="margin-top:14px">Degree Nesting <small>· Monthly → Weekly → Daily → 4H</small></h2>
+      <div class="tpo-tablewrap"><table class="tpo-table" id="ew-nesting"></table></div>
+
+      <h2 style="margin-top:14px">Wave Personality Checks</h2>
+      <div class="tpo-tablewrap"><table class="tpo-table" id="ew-personality"></table></div>
+
+      <h2 style="margin-top:14px">Final Conclusion</h2>
+      <ul class="signals" id="ew-conclusion"></ul>
+    </div>
+    <div class="hint" id="ew-note"></div>
   </section>
 </main>
 
