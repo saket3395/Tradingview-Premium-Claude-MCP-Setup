@@ -19,6 +19,7 @@ import { runBacktest } from '../lib/backtest.mjs';
 import { buildAnalytics } from '../lib/analytics.mjs';
 import { getSeries, searchSymbols } from '../lib/history.mjs';
 import { buildReport } from '../lib/patterns.mjs';
+import { buildVCP } from '../lib/minervini.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 loadEnv(join(ROOT, '.env'));
@@ -115,6 +116,19 @@ const routes = {
     const url = new URL(req.url, `http://localhost:${PORT}`);
     const riskPct = Number(url.searchParams.get('riskPct')) || 1;
     return buildAnalytics({ riskPct });
+  },
+
+  // Minervini VCP tab — SEPA technical screen for one symbol: Trend Template (8),
+  // true percentile RS Rating, volatility-contraction base, and the resulting trade plan.
+  // On demand only. Reuses the same history cache as the Pattern Analysis tab, so
+  // flipping between the two tabs on one symbol costs nothing.
+  'GET /api/vcp': async (req) => {
+    const url = new URL(req.url, `http://localhost:${PORT}`);
+    const symbol = (url.searchParams.get('symbol') || '').trim();
+    if (!symbol) return { ok: false, error: 'symbol required' };
+    const series = await getSeries(symbol);
+    if (!series.ok) return { ok: false, symbol, error: series.error };
+    return buildVCP(series);
   },
 
   // Pattern Analysis tab — symbol autocomplete. Reuses TradingView's own public

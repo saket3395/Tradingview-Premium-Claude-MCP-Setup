@@ -4,8 +4,11 @@ const el = (t, c, html) => { const e = document.createElement(t); if (c) e.class
 const api = (p, opt) => fetch(p, opt).then(r => r.json());
 
 let CONFIG = null, POLL_MS = 7000, timer = null;
-// Symbol on the active TradingView chart — used to prefill the Pattern Analysis tab.
+// Symbol on the active TradingView chart — used to prefill the analysis tabs.
 let CHART_SYMBOL = '';
+// Symbol under analysis, shared by Pattern Analysis and VCP so switching methodology keeps
+// you on the same name (and reuses the server-side history cache).
+let SELECTED_SYMBOL = '';
 
 // ---------- init ----------
 (async function init() {
@@ -137,7 +140,8 @@ async function switchSymbol(sym) {
 // ---------- tabs + TPO scanners (India + USA share one implementation) ----------
 (function wireTabsAndTPO() {
   const views = { dashboard: $('#view-dashboard'), tpo: $('#view-tpo'), 'tpo-usa': $('#view-tpo-usa'),
-    patterns: $('#view-patterns'), testing: $('#view-testing'), analytics: $('#view-analytics') };
+    patterns: $('#view-patterns'), vcp: $('#view-vcp'),
+    testing: $('#view-testing'), analytics: $('#view-analytics') };
   const tabs = [...document.querySelectorAll('#tabs .tab')];
 
   function makeTPO(prefix, endpoint) {
@@ -437,8 +441,71 @@ async function switchSymbol(sym) {
   // ---------- Pattern Analysis (multi-timeframe confluence report) ----------
   // On-demand only: one request per Analyze click, no polling. Prefills (and auto-runs
   // once) from the active TradingView chart symbol, but stays editable for any symbol.
-  function makePatterns() {
+  // Symbol combobox shared by the analysis tabs. `prefix` keys the element ids
+  // (pat-symbol/pat-suggest, vcp-symbol/vcp-suggest); `onPick` runs the tab's analysis.
+  // Debounced lookup against /api/symbols, which is already filtered server-side to the
+  // exchanges we can fetch history for. Keyboard-driven: up/down move, Enter picks the
+  // highlighted row (or runs the analysis when the list is closed), Esc closes.
+  function makeCombo(prefix, onPick) {
     const esc = s => String(s ?? '').replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m]));
+    const input = () => document.getElementById(prefix + '-symbol');
+    const box = () => document.getElementById(prefix + '-suggest');
+    let sug = [], active = -1, debounce = null, lastQ = '';
+
+    function close() {
+      sug = []; active = -1;
+      box().classList.add('hidden');
+      input().setAttribute('aria-expanded', 'false');
+    }
+    function paint() {
+      box().innerHTML = sug.length
+        ? sug.map((r, i) => `<li role="option" data-i="${i}" class="${i === active ? 'active' : ''}"
+            aria-selected="${i === active}"><span class="s-sym">${esc(r.symbol)}</span>
+            <span class="s-ex">${esc(r.exchange)}</span>
+            <span class="s-desc">${esc(r.description)}</span></li>`).join('')
+        : `<li class="s-none">No matching NSE / NASDAQ / NYSE / AMEX symbol.</li>`;
+      box().classList.remove('hidden');
+      input().setAttribute('aria-expanded', 'true');
+    }
+    function pick(i) {
+      const r = sug[i];
+      if (!r) return;
+      input().value = r.value; close(); onPick();
+    }
+    async function lookup() {
+      const q = input().value.trim();
+      if (q.length < 1) return close();
+      lastQ = q;
+      let r;
+      try { r = await api('/api/symbols?q=' + encodeURIComponent(q)); } catch { return; }
+      if (lastQ !== input().value.trim()) return;      // a newer keystroke won
+      sug = r?.rows || []; active = sug.length ? 0 : -1;
+      paint();
+    }
+    function onKey(e) {
+      const open = !box().classList.contains('hidden') && sug.length;
+      if (e.key === 'ArrowDown' && open) { e.preventDefault(); active = (active + 1) % sug.length; paint(); }
+      else if (e.key === 'ArrowUp' && open) { e.preventDefault(); active = (active - 1 + sug.length) % sug.length; paint(); }
+      else if (e.key === 'Enter') { e.preventDefault(); open && active >= 0 ? pick(active) : (close(), onPick()); }
+      else if (e.key === 'Escape') close();
+    }
+    return {
+      close, esc,
+      wire() {
+        input().addEventListener('keydown', onKey);
+        input().addEventListener('input', () => { clearTimeout(debounce); debounce = setTimeout(lookup, 180); });
+        input().addEventListener('blur', () => setTimeout(close, 150));
+        box().addEventListener('mousedown', e => {
+          const li = e.target.closest('li[data-i]');
+          if (li) { e.preventDefault(); pick(+li.dataset.i); }
+        });
+      },
+    };
+  }
+
+  function makePatterns() {
+    const combo = makeCombo('pat', () => run());
+    const esc = combo.esc;
     const fmt = x => x == null ? '—' : x;
     const num = x => x == null ? '—' : (x > 0 ? '+' : '') + x;
     const biasCls = b => /Strong Bullish|Bullish/.test(b) ? 'good' : /Bearish/.test(b) ? 'bad' : 'warn';
@@ -448,6 +515,7 @@ async function switchSymbol(sym) {
     async function run() {
       const sym = $('#pat-symbol').value.trim();
       if (!sym || busy) return;
+      SELECTED_SYMBOL = sym;
       busy = true;
       $('#pat-note').textContent = `Fetching 4H / Daily / Weekly / Monthly history for ${sym}…`;
       let r;
@@ -523,70 +591,139 @@ async function switchSymbol(sym) {
       $('#pat-conclusion').innerHTML = r.conclusion.map(c => `<li>${esc(c)}</li>`).join('');
     }
 
-    // ----- autocomplete -----------------------------------------------------
-    // Debounced lookup against /api/symbols (TradingView symbol search, already
-    // filtered server-side to exchanges we can fetch history for). Keyboard-driven:
-    // ↑/↓ move, Enter picks the highlighted row (or runs the analysis when the list
-    // is closed), Esc closes.
-    let sug = [], active = -1, debounce = null, lastQ = '';
+    let wired = false;
+    return {
+      start() {
+        if (!wired) {
+          wired = true;
+          combo.wire();
+          $('#pat-run').addEventListener('click', () => { combo.close(); run(); });
+        }
+        const want = SELECTED_SYMBOL || CHART_SYMBOL;
+        if (want && $('#pat-symbol').value !== want) { $('#pat-symbol').value = want; autoRan = false; }
+        if (!autoRan && $('#pat-symbol').value) { autoRan = true; run(); }
+      },
+      stop() {},
+    };
+  }
 
-    function closeSuggest() {
-      sug = []; active = -1;
-      $('#pat-suggest').classList.add('hidden');
-      $('#pat-symbol').setAttribute('aria-expanded', 'false');
-    }
-    function paintSuggest() {
-      const box = $('#pat-suggest');
-      box.innerHTML = sug.length
-        ? sug.map((r, i) => `<li role="option" data-i="${i}" class="${i === active ? 'active' : ''}"
-            aria-selected="${i === active}"><span class="s-sym">${esc(r.symbol)}</span>
-            <span class="s-ex">${esc(r.exchange)}</span>
-            <span class="s-desc">${esc(r.description)}</span></li>`).join('')
-        : `<li class="s-none">No matching NSE / NASDAQ / NYSE / AMEX symbol.</li>`;
-      box.classList.remove('hidden');
-      $('#pat-symbol').setAttribute('aria-expanded', 'true');
-    }
-    function pick(i) {
-      const r = sug[i];
-      if (!r) return;
-      $('#pat-symbol').value = r.value;
-      closeSuggest();
-      run();
-    }
-    async function lookup() {
-      const q = $('#pat-symbol').value.trim();
-      if (q.length < 1) return closeSuggest();
-      lastQ = q;
+  // ---------- Minervini VCP ----------
+  // Verdict-first: the two-second read is the verdict tile row, then the Trend Template
+  // checklist (the gate), the contraction footprint, and the trade plan.
+  function makeVCP() {
+    const combo = makeCombo('vcp', () => run());
+    const esc = combo.esc;
+    const fmt = x => x == null ? '\u2014' : x;
+    const num = x => x == null ? '\u2014' : (x > 0 ? '+' : '') + x;
+    const vCls = v => v === 'BUY-READY' ? 'good' : v === 'SETUP FORMING' ? 'warn'
+      : v === 'EXTENDED' ? 'warn' : v === 'WATCH' ? '' : 'bad';
+    let autoRan = false, busy = false;
+
+    async function run() {
+      const sym = $('#vcp-symbol').value.trim();
+      if (!sym || busy) return;
+      SELECTED_SYMBOL = sym;
+      busy = true;
+      $('#vcp-note').textContent = `Fetching history and ranking ${sym} against its market\u2026`;
       let r;
-      try { r = await api('/api/symbols?q=' + encodeURIComponent(q)); } catch { return; }
-      if (lastQ !== $('#pat-symbol').value.trim()) return;   // a newer keystroke won
-      sug = r?.rows || []; active = sug.length ? 0 : -1;
-      paintSuggest();
+      try { r = await api('/api/vcp?symbol=' + encodeURIComponent(sym)); }
+      catch (e) { r = { ok: false, error: e.message }; }
+      busy = false;
+      $('#vcp-updated').textContent = 'updated ' + new Date().toLocaleTimeString();
+      if (!r || !r.ok) {
+        $('#vcp-body').classList.add('hidden');
+        $('#vcp-empty').classList.remove('hidden');
+        $('#vcp-empty').textContent = `No VCP analysis for ${sym} \u2014 ${r?.error || 'request failed'}`;
+        $('#vcp-src').textContent = '\u2014'; $('#vcp-note').textContent = '';
+        return;
+      }
+      $('#vcp-empty').classList.add('hidden');
+      $('#vcp-body').classList.remove('hidden');
+      $('#vcp-src').textContent = (r.market === 'india' ? '\ud83c\uddee\ud83c\uddf3 NSE' : '\ud83c\uddfa\ud83c\uddf8 US') + ' \u00b7 real OHLC';
+      $('#vcp-note').textContent = 'Source: ' + r.source;
+
+      // Verdict tiles
+      const d = $('#vcp-verdict'); d.innerHTML = '';
+      const tile = (k, v, cls) => { const t = el('div', 'dtile' + (cls ? ' ' + cls : '')); t.append(el('div', 'dk', k), el('div', 'dv', String(fmt(v)))); d.append(t); };
+      const tt = r.trendTemplate, v = r.vcp;
+      tile('Symbol', r.symbol);
+      tile('Price', r.price);
+      tile('Verdict', r.verdict.label, vCls(r.verdict.label));
+      tile('Trend Template', `${tt.passed}/8`, tt.passed === 8 ? 'good' : tt.passed >= 7 ? 'warn' : 'bad');
+      tile('RS Rating', r.rs.ok ? r.rs.rs : 'n/a', r.rs.ok ? (r.rs.rs >= 80 ? 'good' : r.rs.rs >= 70 ? 'warn' : 'bad') : 'warn');
+      tile('Contractions', v.ok ? v.count : '\u2014', v.ok ? 'good' : '');
+      tile('Pivot', v.ok ? v.pivot : '\u2014');
+      tile('Score', r.verdict.score + '/10', r.verdict.score >= 7 ? 'good' : r.verdict.score >= 5 ? 'warn' : 'bad');
+      tile('Confidence', r.verdict.confidence + '%', r.verdict.confidence >= 70 ? 'good' : r.verdict.confidence >= 40 ? 'warn' : '');
+      $('#vcp-why').innerHTML = `<span class="tag ${r.verdict.label === 'BUY-READY' ? 'status-live' : 'status-delayed'}">${esc(r.verdict.why)}</span>`;
+
+      // Trend Template checklist
+      $('#vcp-tt').innerHTML = `<tr><th>#</th><th>Criterion</th><th>Result</th><th>Measured</th></tr>`
+        + tt.criteria.map(c => `<tr><td>${c.id}</td><td>${esc(c.label)}</td>
+            <td class="${c.pass ? 'good' : 'bad'}"><b>${c.pass ? '\u2713 pass' : '\u2717 fail'}</b></td>
+            <td>${esc(c.actual)}</td></tr>`).join('');
+
+      // Contractions
+      if (v.ok) {
+        $('#vcp-contractions').innerHTML = `<tr><th>#</th><th class="num">High</th><th class="num">Low</th>
+          <th class="num">Depth</th><th class="num">vs prior</th><th class="num">Sessions</th><th class="num">Volume vs 50d</th></tr>`
+          + v.contractions.map(c => `<tr><td>${c.n}</td><td class="num">${c.high}</td><td class="num">${c.low}</td>
+              <td class="num"><b>${c.depthPct}%</b></td><td class="num">${c.vsPrior == null ? '\u2014' : c.vsPrior + '\u00d7'}</td>
+              <td class="num">${c.bars}</td><td class="num">${fmt(c.volVs50d)}\u00d7</td></tr>`).join('');
+        $('#vcp-base').innerHTML = `<span class="tag">footprint ${esc(v.footprint)}</span>`
+          + `<span class="tag">base ${v.baseDepthPct}% deep / ${v.baseBars} sessions</span>`
+          + `<span class="tag${v.dryUpVs50d != null && v.dryUpVs50d < 0.8 ? ' status-live' : ''}">volume dry-up ${fmt(v.dryUpVs50d)}\u00d7 the 50-day average</span>`
+          + `<span class="tag">tightness ${v.tightnessPct}%</span>`
+          + `<span class="tag">pivot ${v.pivot} (${num(v.distToPivotPct)}% away)</span>`;
+      } else {
+        $('#vcp-contractions').innerHTML = `<tr><td class="hint">${esc(v.error)}</td></tr>`;
+        $('#vcp-base').innerHTML = '';
+      }
+
+      // Trade plan
+      const pd = $('#vcp-plan'); pd.innerHTML = '';
+      const ptile = (k, val, cls) => { const t = el('div', 'dtile' + (cls ? ' ' + cls : '')); t.append(el('div', 'dk', k), el('div', 'dv', String(fmt(val)))); pd.append(t); };
+      if (r.tradePlan) {
+        const p = r.tradePlan;
+        ptile('Buy above', p.pivot, 'good');
+        ptile('Low cheat entry', p.cheatEntry ?? 'n/a (base not tight enough)');
+        ptile('Stop', p.stop, 'bad');
+        ptile('Risk', `\u2212${p.stopPct}%`, p.stopPct <= 7 ? 'good' : 'warn');
+        ptile('Target 2R', p.targets[0]);
+        ptile('Target 3R', p.targets[1]);
+        ptile('Stop basis', p.stopBasis);
+        ptile('Trigger', p.trigger);
+        $('#vcp-sizing').innerHTML = `<span class="tag">${esc(p.sizing)}</span>`;
+      } else {
+        pd.innerHTML = '<div class="hint">No trade plan \u2014 there is no valid base to buy.</div>';
+        $('#vcp-sizing').innerHTML = '';
+      }
+
+      // Context
+      const ctx = r.context;
+      $('#vcp-context').innerHTML = `<tr><th>Item</th><th>Value</th><th>Detail</th></tr>`
+        + `<tr><td>Weekly stage</td><td><b>${esc(ctx.weeklyStage?.label || 'n/a')}</b></td><td>${ctx.weeklyStage ? ctx.weeklyStage.confidence + '% confidence, 30-week MA ' + ctx.weeklyStage.ma : 'weekly history unavailable'}</td></tr>`
+        + `<tr><td>Daily stage</td><td><b>${esc(ctx.dailyStage.label)}</b></td><td>${ctx.dailyStage.confidence}% confidence, 30-day MA ${ctx.dailyStage.ma}</td></tr>`
+        + `<tr><td>RS Rating</td><td><b>${r.rs.ok ? r.rs.rs : 'n/a'}</b></td><td>${r.rs.ok ? `3M ${r2s(r.rs.p3)}% \u00b7 6M ${r2s(r.rs.p6)}% \u00b7 1Y ${r2s(r.rs.p12)}% \u00b7 ranked against ${r.rs.universe} names` : esc(r.rs.error || '')}</td></tr>`
+        + `<tr><td>RS method</td><td>percentile</td><td>${esc(r.rs.method || '')}${r.rs.filter ? ' \u2014 universe: ' + esc(r.rs.filter) : ''}</td></tr>`
+        + `<tr><td>52-week range</td><td>${tt.low52} \u2013 ${tt.high52}</td><td>+${tt.aboveLowPct}% above the low, \u2212${tt.belowHighPct}% from the high</td></tr>`
+        + `<tr><td>Moving averages</td><td>50 / 150 / 200</td><td>${tt.ma50} / ${tt.ma150} / ${tt.ma200} \u00b7 200-MA slope ${num(tt.ma200SlopePct)}% over 22 sessions</td></tr>`;
+
+      $('#vcp-conclusion').innerHTML = r.conclusion.map(c => `<li>${esc(c)}</li>`).join('');
     }
-    function onKey(e) {
-      const open = !$('#pat-suggest').classList.contains('hidden') && sug.length;
-      if (e.key === 'ArrowDown' && open) { e.preventDefault(); active = (active + 1) % sug.length; paintSuggest(); }
-      else if (e.key === 'ArrowUp' && open) { e.preventDefault(); active = (active - 1 + sug.length) % sug.length; paintSuggest(); }
-      else if (e.key === 'Enter') { e.preventDefault(); open && active >= 0 ? pick(active) : (closeSuggest(), run()); }
-      else if (e.key === 'Escape') closeSuggest();
-    }
+    const r2s = x => x == null ? '\u2014' : Math.round(x * 10) / 10;
 
     let wired = false;
     return {
       start() {
         if (!wired) {
           wired = true;
-          $('#pat-run').addEventListener('click', () => { closeSuggest(); run(); });
-          $('#pat-symbol').addEventListener('keydown', onKey);
-          $('#pat-symbol').addEventListener('input', () => { clearTimeout(debounce); debounce = setTimeout(lookup, 180); });
-          $('#pat-symbol').addEventListener('blur', () => setTimeout(closeSuggest, 150));
-          $('#pat-suggest').addEventListener('mousedown', e => {
-            const li = e.target.closest('li[data-i]');
-            if (li) { e.preventDefault(); pick(+li.dataset.i); }
-          });
+          combo.wire();
+          $('#vcp-run').addEventListener('click', () => { combo.close(); run(); });
         }
-        if (!$('#pat-symbol').value && CHART_SYMBOL) $('#pat-symbol').value = CHART_SYMBOL;
-        if (!autoRan && $('#pat-symbol').value) { autoRan = true; run(); }
+        const want = SELECTED_SYMBOL || CHART_SYMBOL;
+        if (want && $('#vcp-symbol').value !== want) { $('#vcp-symbol').value = want; autoRan = false; }
+        if (!autoRan && $('#vcp-symbol').value) { autoRan = true; run(); }
       },
       stop() {},
     };
@@ -594,6 +731,7 @@ async function switchSymbol(sym) {
 
   const controllers = {
     patterns: makePatterns(),
+    vcp: makeVCP(),
     tpo: makeTPO('tpo', '/api/tpo/scan'),
     'tpo-usa': makeTPO('utpo', '/api/tpo/scan/usa'),
     testing: makeTesting(),

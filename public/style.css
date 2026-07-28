@@ -157,11 +157,11 @@ footer{color:var(--mut);font-size:11px;text-align:center;padding:14px}
 .pat-input{background:#0f141b;border:1px solid var(--line);border-radius:6px;color:var(--fg);
   font:inherit;font-size:13px;padding:5px 10px;min-width:260px;flex:0 1 320px}
 .pat-input:focus{outline:none;border-color:#4c8dff77}
-#pat-card .tpo-table td.good{color:var(--grn)}
-#pat-card .tpo-table td.bad{color:var(--red)}
-#pat-card .tpo-table td.warn{color:var(--amb)}
-#pat-card .tpo-table td{vertical-align:top}
-#pat-card h2{margin-top:10px}
+#pat-card .tpo-table td.good,#vcp-card .tpo-table td.good{color:var(--grn)}
+#pat-card .tpo-table td.bad,#vcp-card .tpo-table td.bad{color:var(--red)}
+#pat-card .tpo-table td.warn,#vcp-card .tpo-table td.warn{color:var(--amb)}
+#pat-card .tpo-table td,#vcp-card .tpo-table td{vertical-align:top}
+#pat-card h2,#vcp-card h2{margin-top:10px}
 .pat-combo{position:relative;flex:0 1 340px;min-width:240px}
 .pat-combo .pat-input{width:100%;flex:none}
 .pat-suggest{position:absolute;z-index:20;top:calc(100% + 4px);left:0;right:0;margin:0;padding:4px;
