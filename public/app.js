@@ -4,6 +4,8 @@ const el = (t, c, html) => { const e = document.createElement(t); if (c) e.class
 const api = (p, opt) => fetch(p, opt).then(r => r.json());
 
 let CONFIG = null, POLL_MS = 7000, timer = null;
+// Symbol on the active TradingView chart — used to prefill the Pattern Analysis tab.
+let CHART_SYMBOL = '';
 
 // ---------- init ----------
 (async function init() {
@@ -22,6 +24,7 @@ function stop() { clearInterval(timer); timer = null; }
 // ---------- poll loop ----------
 async function poll() {
   let snap; try { snap = await api('/api/snapshot'); } catch { snap = { status: { up: false } }; }
+  if (snap.chart && snap.chart.symbol) CHART_SYMBOL = snap.chart.symbol;
   renderHealth(snap.status);
   renderSignals(snap.signals, snap.chart);
   renderScans(snap.watchlist || []);
@@ -134,7 +137,7 @@ async function switchSymbol(sym) {
 // ---------- tabs + TPO scanners (India + USA share one implementation) ----------
 (function wireTabsAndTPO() {
   const views = { dashboard: $('#view-dashboard'), tpo: $('#view-tpo'), 'tpo-usa': $('#view-tpo-usa'),
-    testing: $('#view-testing'), analytics: $('#view-analytics') };
+    patterns: $('#view-patterns'), testing: $('#view-testing'), analytics: $('#view-analytics') };
   const tabs = [...document.querySelectorAll('#tabs .tab')];
 
   function makeTPO(prefix, endpoint) {
@@ -431,7 +434,166 @@ async function switchSymbol(sym) {
     };
   }
 
+  // ---------- Pattern Analysis (multi-timeframe confluence report) ----------
+  // On-demand only: one request per Analyze click, no polling. Prefills (and auto-runs
+  // once) from the active TradingView chart symbol, but stays editable for any symbol.
+  function makePatterns() {
+    const esc = s => String(s ?? '').replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m]));
+    const fmt = x => x == null ? '—' : x;
+    const num = x => x == null ? '—' : (x > 0 ? '+' : '') + x;
+    const biasCls = b => /Strong Bullish|Bullish/.test(b) ? 'good' : /Bearish/.test(b) ? 'bad' : 'warn';
+    const statusCls = s => s === 'Confirmed' ? 'good' : s === 'Failed' ? 'bad' : 'warn';
+    let autoRan = false, busy = false;
+
+    async function run() {
+      const sym = $('#pat-symbol').value.trim();
+      if (!sym || busy) return;
+      busy = true;
+      $('#pat-note').textContent = `Fetching 4H / Daily / Weekly / Monthly history for ${sym}…`;
+      let r;
+      try { r = await api('/api/patterns?symbol=' + encodeURIComponent(sym)); }
+      catch (e) { r = { ok: false, error: e.message }; }
+      busy = false;
+      $('#pat-updated').textContent = 'updated ' + new Date().toLocaleTimeString();
+      if (!r || !r.ok) {
+        $('#pat-body').classList.add('hidden');
+        $('#pat-empty').classList.remove('hidden');
+        $('#pat-empty').textContent = `No analysis for ${sym} — ${r?.error || 'request failed'}`;
+        $('#pat-src').textContent = '—'; $('#pat-note').textContent = '';
+        return;
+      }
+      $('#pat-empty').classList.add('hidden');
+      $('#pat-body').classList.remove('hidden');
+      $('#pat-src').textContent = (r.market === 'india' ? '🇮🇳 NSE' : '🇺🇸 US') + ' · real OHLC';
+      $('#pat-note').textContent = 'Source: ' + r.source;
+
+      // Overall assessment
+      const d = $('#pat-overall'); d.innerHTML = '';
+      const tile = (k, v, cls) => { const t = el('div', 'dtile' + (cls ? ' ' + cls : '')); t.append(el('div', 'dk', k), el('div', 'dv', String(fmt(v)))); d.append(t); };
+      tile('Symbol', r.symbol);
+      tile('Price', r.price);
+      tile('Overall bias', r.overall.bias, biasCls(r.overall.bias));
+      tile('Composite', num(r.overall.composite), biasCls(r.overall.bias));
+      tile('Confidence', r.overall.confidence + '%', r.overall.confidence >= 60 ? 'good' : r.overall.confidence >= 30 ? 'warn' : '');
+      tile('TF alignment', r.overall.aligned ? 'aligned' : 'conflicting', r.overall.aligned ? 'good' : 'warn');
+      tile('Daily ATR', r.dayATR);
+      tile('Patterns', r.patterns.length);
+      $('#pat-missing').innerHTML = r.overall.timeframesMissing.length
+        ? `<span class="tag status-delayed">unavailable — ${r.overall.timeframesMissing.map(esc).join(' · ')}</span>` : '';
+
+      // Timeframe analysis
+      $('#pat-tf').innerHTML = `<tr><th>Timeframe</th><th class="num">Close</th><th class="num">Δ 20 bars</th>
+        <th>Stage</th><th>Structure</th><th class="num">30-MA</th><th class="num">50-MA</th><th class="num">200-MA</th>
+        <th class="num">ATR%</th><th class="num">rVol</th><th class="num">Bias</th><th class="num">Patterns</th></tr>`
+        + r.timeframes.map(t => t.ok
+          ? `<tr><td><b>${esc(t.label)}</b> <small>${t.bars} bars</small></td><td class="num">${fmt(t.close)}</td>
+             <td class="num">${num(t.changePct)}%</td><td>${esc(t.stage.label)}</td><td>${esc(t.structure.label)}</td>
+             <td class="num">${fmt(t.stage.ma)}</td><td class="num">${fmt(t.ma50)}</td><td class="num">${fmt(t.ma200)}</td>
+             <td class="num">${fmt(t.atrPct)}</td><td class="num">${fmt(t.rvol)}</td>
+             <td class="num">${num(t.dir)}</td><td class="num">${t.patterns.length}</td></tr>`
+          : `<tr><td><b>${esc(t.label)}</b></td><td colspan="11" class="hint">unavailable — ${esc(t.error)}</td></tr>`).join('');
+
+      // Stage analysis
+      $('#pat-stages').innerHTML = `<tr><th>Timeframe</th><th>Stage</th><th>Phase</th><th class="num">Stage MA</th>
+        <th class="num">MA slope %/5 bars</th><th class="num">Dist (ATR)</th><th class="num">Confidence</th><th>Read</th></tr>`
+        + r.stages.map(s => `<tr><td>${esc(s.tf)}</td><td><b>${esc(s.label)}</b></td><td>${esc(s.phase)}</td>
+            <td class="num">${fmt(s.ma)}</td><td class="num">${num(s.maSlopePct)}</td><td class="num">${num(s.distATR)}</td>
+            <td class="num">${s.confidence}%</td><td>${esc(s.reason)}</td></tr>`).join('');
+
+      // Pattern summary
+      $('#pat-patterns').innerHTML = `<tr><th>Timeframe</th><th>Pattern</th><th>Bias</th><th>Status</th>
+        <th class="num">Confidence</th><th class="num">Score</th><th>HTF aligned</th><th class="num">Target</th><th>Evidence</th></tr>`
+        + (r.patterns.length
+          ? r.patterns.map(p => `<tr><td>${esc(p.timeframe)}</td><td><b>${esc(p.pattern)}</b></td>
+              <td class="${biasCls(p.bias)}">${esc(p.bias)}</td><td class="${statusCls(p.status)}"><b>${esc(p.status)}</b></td>
+              <td class="num">${p.confidence}%</td><td class="num"><b>${p.score}</b>/10</td>
+              <td class="${p.htfAligned === 'yes' ? 'good' : p.htfAligned === 'no' ? 'bad' : ''}">${esc(p.htfAligned)}</td>
+              <td class="num">${fmt(p.levels?.target)}</td><td>${esc(p.detail)}</td></tr>`).join('')
+          : `<tr><td colspan="9" class="hint">No pattern clears the 55% high-confidence bar on any timeframe — stand aside.</td></tr>`);
+
+      // Key levels
+      const lvl = (rows, kind) => rows.map(x => `<tr><td>${kind}</td><td class="num"><b>${x.price}</b></td>
+        <td class="num">${num(x.distPct)}%</td><td class="num">${x.strength}</td><td class="num">${x.touches}</td>
+        <td>${x.sources.map(esc).join(' · ')}</td></tr>`).join('');
+      $('#pat-levels').innerHTML = `<tr><th>Type</th><th class="num">Level</th><th class="num">Distance</th>
+        <th class="num">Strength</th><th class="num">Confluence</th><th>Built from</th></tr>`
+        + lvl(r.levels.resistance.slice().reverse(), 'Resistance') + lvl(r.levels.support, 'Support');
+
+      // Conclusion
+      $('#pat-conclusion').innerHTML = r.conclusion.map(c => `<li>${esc(c)}</li>`).join('');
+    }
+
+    // ----- autocomplete -----------------------------------------------------
+    // Debounced lookup against /api/symbols (TradingView symbol search, already
+    // filtered server-side to exchanges we can fetch history for). Keyboard-driven:
+    // ↑/↓ move, Enter picks the highlighted row (or runs the analysis when the list
+    // is closed), Esc closes.
+    let sug = [], active = -1, debounce = null, lastQ = '';
+
+    function closeSuggest() {
+      sug = []; active = -1;
+      $('#pat-suggest').classList.add('hidden');
+      $('#pat-symbol').setAttribute('aria-expanded', 'false');
+    }
+    function paintSuggest() {
+      const box = $('#pat-suggest');
+      box.innerHTML = sug.length
+        ? sug.map((r, i) => `<li role="option" data-i="${i}" class="${i === active ? 'active' : ''}"
+            aria-selected="${i === active}"><span class="s-sym">${esc(r.symbol)}</span>
+            <span class="s-ex">${esc(r.exchange)}</span>
+            <span class="s-desc">${esc(r.description)}</span></li>`).join('')
+        : `<li class="s-none">No matching NSE / NASDAQ / NYSE / AMEX symbol.</li>`;
+      box.classList.remove('hidden');
+      $('#pat-symbol').setAttribute('aria-expanded', 'true');
+    }
+    function pick(i) {
+      const r = sug[i];
+      if (!r) return;
+      $('#pat-symbol').value = r.value;
+      closeSuggest();
+      run();
+    }
+    async function lookup() {
+      const q = $('#pat-symbol').value.trim();
+      if (q.length < 1) return closeSuggest();
+      lastQ = q;
+      let r;
+      try { r = await api('/api/symbols?q=' + encodeURIComponent(q)); } catch { return; }
+      if (lastQ !== $('#pat-symbol').value.trim()) return;   // a newer keystroke won
+      sug = r?.rows || []; active = sug.length ? 0 : -1;
+      paintSuggest();
+    }
+    function onKey(e) {
+      const open = !$('#pat-suggest').classList.contains('hidden') && sug.length;
+      if (e.key === 'ArrowDown' && open) { e.preventDefault(); active = (active + 1) % sug.length; paintSuggest(); }
+      else if (e.key === 'ArrowUp' && open) { e.preventDefault(); active = (active - 1 + sug.length) % sug.length; paintSuggest(); }
+      else if (e.key === 'Enter') { e.preventDefault(); open && active >= 0 ? pick(active) : (closeSuggest(), run()); }
+      else if (e.key === 'Escape') closeSuggest();
+    }
+
+    let wired = false;
+    return {
+      start() {
+        if (!wired) {
+          wired = true;
+          $('#pat-run').addEventListener('click', () => { closeSuggest(); run(); });
+          $('#pat-symbol').addEventListener('keydown', onKey);
+          $('#pat-symbol').addEventListener('input', () => { clearTimeout(debounce); debounce = setTimeout(lookup, 180); });
+          $('#pat-symbol').addEventListener('blur', () => setTimeout(closeSuggest, 150));
+          $('#pat-suggest').addEventListener('mousedown', e => {
+            const li = e.target.closest('li[data-i]');
+            if (li) { e.preventDefault(); pick(+li.dataset.i); }
+          });
+        }
+        if (!$('#pat-symbol').value && CHART_SYMBOL) $('#pat-symbol').value = CHART_SYMBOL;
+        if (!autoRan && $('#pat-symbol').value) { autoRan = true; run(); }
+      },
+      stop() {},
+    };
+  }
+
   const controllers = {
+    patterns: makePatterns(),
     tpo: makeTPO('tpo', '/api/tpo/scan'),
     'tpo-usa': makeTPO('utpo', '/api/tpo/scan/usa'),
     testing: makeTesting(),

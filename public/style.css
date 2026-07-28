@@ -152,3 +152,24 @@ footer{color:var(--mut);font-size:11px;text-align:center;padding:14px}
 .setup-EXPANSION{color:var(--mut)}
 .eq{font-variant-numeric:tabular-nums;font-weight:600}
 .eq.good{color:var(--grn)} .eq.low{color:var(--red)}
+
+/* ---- Pattern Analysis tab ---- */
+.pat-input{background:#0f141b;border:1px solid var(--line);border-radius:6px;color:var(--fg);
+  font:inherit;font-size:13px;padding:5px 10px;min-width:260px;flex:0 1 320px}
+.pat-input:focus{outline:none;border-color:#4c8dff77}
+#pat-card .tpo-table td.good{color:var(--grn)}
+#pat-card .tpo-table td.bad{color:var(--red)}
+#pat-card .tpo-table td.warn{color:var(--amb)}
+#pat-card .tpo-table td{vertical-align:top}
+#pat-card h2{margin-top:10px}
+.pat-combo{position:relative;flex:0 1 340px;min-width:240px}
+.pat-combo .pat-input{width:100%;flex:none}
+.pat-suggest{position:absolute;z-index:20;top:calc(100% + 4px);left:0;right:0;margin:0;padding:4px;
+  list-style:none;max-height:290px;overflow-y:auto;background:#0f141b;border:1px solid var(--line);
+  border-radius:8px;box-shadow:0 10px 28px #0009}
+.pat-suggest li{display:flex;gap:8px;align-items:baseline;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:12px}
+.pat-suggest li:hover,.pat-suggest li.active{background:#1a2230}
+.pat-suggest .s-sym{font-weight:600;color:var(--fg)}
+.pat-suggest .s-ex{color:var(--mut);font-size:11px;border:1px solid var(--line);border-radius:4px;padding:0 5px}
+.pat-suggest .s-desc{color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;text-align:right}
+.pat-suggest .s-none{color:var(--mut);cursor:default}

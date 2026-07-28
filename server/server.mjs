@@ -17,6 +17,8 @@ import { getCircuit } from '../lib/upstox.mjs';
 import { summary as journalSummary } from '../lib/journal.mjs';
 import { runBacktest } from '../lib/backtest.mjs';
 import { buildAnalytics } from '../lib/analytics.mjs';
+import { getSeries, searchSymbols } from '../lib/history.mjs';
+import { buildReport } from '../lib/patterns.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 loadEnv(join(ROOT, '.env'));
@@ -113,6 +115,35 @@ const routes = {
     const url = new URL(req.url, `http://localhost:${PORT}`);
     const riskPct = Number(url.searchParams.get('riskPct')) || 1;
     return buildAnalytics({ riskPct });
+  },
+
+  // Pattern Analysis tab — symbol autocomplete. Reuses TradingView's own public
+  // symbol-search (same server-side, no-dependency pattern as the TPO scanner), then
+  // filters to the exchanges this dashboard can actually analyse: NSE via Upstox and
+  // NASDAQ/NYSE/AMEX via Alpaca. Suggesting a symbol we cannot fetch history for would
+  // only produce a dead end.
+  'GET /api/symbols': async (req) => {
+    const url = new URL(req.url, `http://localhost:${PORT}`);
+    const q = (url.searchParams.get('q') || '').trim();
+    if (q.length < 1) return { ok: true, q, rows: [] };
+    return searchSymbols(q);
+  },
+
+  // Pattern Analysis tab — top-down multi-timeframe (4H/D/W/M) structural report for
+  // one symbol. On demand only; no chart interaction, no polling. Real OHLC only
+  // (Upstox for NSE, Alpaca for US) — a timeframe with no data is reported as missing.
+  'GET /api/patterns': async (req) => {
+    const url = new URL(req.url, `http://localhost:${PORT}`);
+    const symbol = (url.searchParams.get('symbol') || '').trim();
+    if (!symbol) return { ok: false, error: 'symbol required' };
+    const series = await getSeries(symbol);
+    if (!series.ok) return { ok: false, symbol, error: series.error };
+    const usable = Object.values(series.tfs).filter(t => t.ok).length;
+    if (!usable) {
+      return { ok: false, symbol, error: 'No timeframe returned data: '
+        + Object.entries(series.tfs).map(([k, v]) => `${k}: ${v.error}`).join(' · ') };
+    }
+    return buildReport(series);
   },
 
   // TPO Scanner — Stage 2: on-demand deep confirm for one symbol. Switches the visible
