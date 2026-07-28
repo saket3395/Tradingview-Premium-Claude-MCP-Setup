@@ -56,6 +56,7 @@ monitor) — the dashboard reads whichever chart tab is currently active.
 | India — Intraday | Timeframes, **fast scan** of NSE/BSE watchlist, intraday trade checklist | watchlist + `config/markets.json` |
 | India TPO Scanner | Full-NSE-universe profile-informed scan with **fixed entries, State, SL, circuit-capped targets, R:R**, on-chart **Confirm** (+ real Upstox circuit) and a *How to Trade This Signal* guide | `GET /api/tpo/scan`, `POST /api/tpo/confirm` |
 | USA TPO Scanner | Same engine for NASDAQ/NYSE/AMEX (no circuit clamp) | `GET /api/tpo/scan/usa` |
+| Pattern Analysis | **Symbol autocomplete** (TradingView symbol search, filtered to NSE/NASDAQ/NYSE/AMEX — the exchanges history is actually available for) driving a **top-down multi-timeframe** (Monthly → Weekly → Daily → 4H) structural report for one symbol: **Weinstein stage** per timeframe, rule-based detection of rectangle / triangles / wedges / channels / flags / pennant / cup &amp; handle / VCP / double top-bottom / H&amp;S + inverse / breakout / breakdown / retest / trend continuation-reversal, each with **Status · Confidence % · Technical Score /10** (score adjusted for higher-timeframe alignment), plus multi-timeframe **support/resistance confluence** and a rule-based conclusion. Real OHLC only — Upstox for NSE (4H aggregated from 30m), Alpaca for US; a timeframe with no data is reported missing, never guessed | `GET /api/symbols?q=…`, `GET /api/patterns?symbol=…` |
 | Testing | **Forward-test journal** of every frozen plan (a plan only counts toward PF/win-rate once it actually reached VALID — never-filled plans are "missed"), pass/fail **gates (PF ≥1.5 · WR ≥40% · R:R ≥1:2, n≥20)**, breakdowns by market/setup/confidence, and an on-demand **India 1-minute backtest** replaying journaled plans against real Upstox candles | `GET /api/test/summary`, `POST /api/test/backtest`, `data/journal.json` |
 | Analytics | **Monte Carlo** bootstrap of realized R-multiples (equity bands, max-DD, risk-of-ruin), **Gaussian HMM market regime** on real NIFTY daily returns (+ per-regime strategy PF/WR), and **robustness** (expectancy ±SE, SQN, threshold sensitivity, rolling PF) — all from real journal outcomes, never simulated prices | `GET /api/analytics` |
 
@@ -95,7 +96,10 @@ npm run tv -- pine:compile
   **Analytics token** — read-only, **~1-year validity**, supports the Market Quote API, and needs
   **no daily refresh** (generate once from the Upstox Developer Apps page → *Analytics* tab). A
   normal OAuth access token also works but expires daily 03:30 IST. Absent/expired ⇒ Confirm falls
-  back to the assumed band and says so.
+  back to the assumed band and says so. `ALPACA_KEY_ID` / `ALPACA_SECRET_KEY` / `ALPACA_FEED`
+  (default `iex`) are **market-data only** credentials used solely by the Pattern Analysis tab to
+  fetch real 4H/1D/1W/1M bars for US symbols — no trading endpoint is ever called. Absent ⇒ US
+  symbols report "no history source" instead of showing invented data.
 
 ## Use with Claude Code (MCP)
 `.mcp.json` wires Google's `chrome-devtools-mcp` to the same CDP endpoint, so Claude can read
@@ -125,6 +129,8 @@ lib/tv.mjs          reused CDP bridge (importable module + CLI; Pine fns kept fo
 lib/signals.mjs     pure legend -> signals + intraday decision metrics
 lib/tpo.mjs         TPO scanner engine (India+USA): scoring, fixed entries, freeze, state, circuit
 lib/upstox.mjs      real NSE circuit at Confirm (instrument map + market-quote)
+lib/history.mjs     multi-timeframe OHLC for Pattern Analysis (Upstox NSE / Alpaca US)
+lib/patterns.mjs    rule-based stage + pattern detection and the top-down report builder
 server/server.mjs   zero-dep HTTP server + JSON API
 public/             index.html, app.js, style.css  (the dashboard)
 config/markets.json India-intraday config + tpo thresholds

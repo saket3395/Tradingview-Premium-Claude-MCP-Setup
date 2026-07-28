@@ -13,6 +13,7 @@
     <button class="tab active" data-view="dashboard">Dashboard</button>
     <button class="tab" data-view="tpo">India TPO Scanner</button>
     <button class="tab" data-view="tpo-usa">USA TPO Scanner</button>
+    <button class="tab" data-view="patterns">Pattern Analysis</button>
     <button class="tab" data-view="testing">Testing</button>
     <button class="tab" data-view="analytics">Analytics</button>
   </nav>
@@ -238,6 +239,77 @@
     </div>
     <div class="tpo-confirm hidden" id="utpo-confirm"></div>
     <div class="hint" id="utpo-note"></div>
+  </section>
+</main>
+
+<!-- PATTERN ANALYSIS (multi-timeframe confluence report) -->
+<main id="view-patterns" class="hidden">
+  <section class="card span2" id="pat-card">
+    <h2>Pattern Analysis <small>· top-down 4H → Daily → Weekly → Monthly · stage + pattern confluence · rule-based</small></h2>
+    <div class="tpo-toolbar">
+      <div class="pat-combo">
+        <input id="pat-symbol" class="pat-input" placeholder="Search a symbol — e.g. RELIANCE, INFY, AAPL"
+               spellcheck="false" autocomplete="off" role="combobox" aria-expanded="false"
+               aria-autocomplete="list" aria-controls="pat-suggest" />
+        <ul class="pat-suggest hidden" id="pat-suggest" role="listbox"></ul>
+      </div>
+      <button id="pat-run" class="btn-confirm">Analyze</button>
+      <span class="pill" id="pat-src">—</span>
+      <span class="grow"></span>
+      <span class="pill" id="pat-updated">—</span>
+    </div>
+
+    <details class="tpo-how" id="pat-how">
+      <summary>How this analysis works</summary>
+      <div class="tpo-how-body">
+        <p><b>Top-down, not single-chart.</b> The symbol is analysed on <b>Monthly → Weekly → Daily → 4H</b>
+        from <b>real OHLC history</b> (NSE via Upstox — 4H aggregated from 30-minute candles anchored to the
+        09:15 session; US via Alpaca). Higher timeframes set the primary trend, the Daily gives the setup, the
+        4H gives the trigger. A timeframe with no data is reported as <b>missing</b>, never guessed.</p>
+        <p><b>Stage Analysis (Weinstein).</b> Each timeframe is classified <b>Stage 1 Basing / 2 Advancing /
+        3 Topping / 4 Declining</b> from the 30-period MA: its slope decides advancing vs declining, and the
+        prior slope separates a flat MA that is <i>basing</i> from one that is <i>topping</i>.</p>
+        <p><b>Pattern detection is geometric, not narrative.</b> Swing pivots (5-bar fractals) feed
+        least-squares boundary lines; every tolerance is scaled in <b>ATR</b> so the same rules port across
+        timeframes. Detected: rectangle · ascending/descending/symmetrical triangle · rising/falling wedge ·
+        ascending/descending channel · bull/bear flag · pennant · cup &amp; handle · VCP · double top/bottom ·
+        head &amp; shoulders and inverse · breakout · breakdown · breakout/breakdown retest · trend
+        continuation · trend reversal.</p>
+        <p><b>Status · Confidence · Score.</b> <b>Status</b> is <b>Confirmed</b> (boundary decisively broken in
+        the pattern's direction), <b>Failed</b> (broken against it) or <b>Developing</b>. <b>Confidence (%)</b>
+        is a weighted sum of that detector's own evidence — line fit R², touch count, symmetry, depth,
+        volume dry-up, break distance in ATR. <b>Technical Score (/10)</b> is confidence adjusted for status
+        and <b>higher-timeframe alignment</b>: a Daily bull flag inside a Weekly Stage 4 is scored down, the
+        same flag inside a Weekly Stage 2 is scored up. Only detections at <b>≥55% confidence</b> are shown —
+        an empty table is an honest "no high-confidence structure".</p>
+        <p class="tpo-how-note">Support/resistance are <b>confluence clusters</b>: swing pivots, the 30/50/200
+        MAs and pattern boundaries from every timeframe, weighted by timeframe (Monthly 4× … 4H 1×) and merged
+        within 0.6 daily ATR. Analysis only — no orders are placed, and nothing here is a recommendation.</p>
+      </div>
+    </details>
+
+    <div id="pat-empty" class="empty">Enter a symbol and press Analyze. The box prefills from your active TradingView chart.</div>
+    <div id="pat-body" class="hidden">
+      <h2>Overall Assessment</h2>
+      <div class="decision" id="pat-overall"></div>
+      <div class="tpo-meta" id="pat-missing"></div>
+
+      <h2>Timeframe Analysis <small>· top-down</small></h2>
+      <div class="tpo-tablewrap"><table class="tpo-table" id="pat-tf"></table></div>
+
+      <h2 style="margin-top:14px">Stage Analysis <small>· Weinstein 30-period stage line</small></h2>
+      <div class="tpo-tablewrap"><table class="tpo-table" id="pat-stages"></table></div>
+
+      <h2 style="margin-top:14px">Pattern Summary</h2>
+      <div class="tpo-tablewrap"><table class="tpo-table" id="pat-patterns"></table></div>
+
+      <h2 style="margin-top:14px">Key Support &amp; Resistance <small>· multi-timeframe confluence</small></h2>
+      <div class="tpo-tablewrap"><table class="tpo-table" id="pat-levels"></table></div>
+
+      <h2 style="margin-top:14px">Final Conclusion</h2>
+      <ul class="signals" id="pat-conclusion"></ul>
+    </div>
+    <div class="hint" id="pat-note"></div>
   </section>
 </main>
 

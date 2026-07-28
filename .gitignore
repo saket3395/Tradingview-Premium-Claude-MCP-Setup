@@ -11,3 +11,4 @@ certs/
 
 # Local editor / preview launch config (machine-specific paths)
 .claude/
+data/journal.backup-*.json
