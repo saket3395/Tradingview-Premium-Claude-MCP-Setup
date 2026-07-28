@@ -20,6 +20,7 @@ import { buildAnalytics } from '../lib/analytics.mjs';
 import { getSeries, searchSymbols } from '../lib/history.mjs';
 import { buildReport } from '../lib/patterns.mjs';
 import { buildVCP } from '../lib/minervini.mjs';
+import { buildElliott } from '../lib/elliott.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 loadEnv(join(ROOT, '.env'));
@@ -116,6 +117,24 @@ const routes = {
     const url = new URL(req.url, `http://localhost:${PORT}`);
     const riskPct = Number(url.searchParams.get('riskPct')) || 1;
     return buildAnalytics({ riskPct });
+  },
+
+  // Elliott Wave tab — impulse + simple corrections across all four degrees, with
+  // alternates and an explicit invalidation level. Shares the history cache with the
+  // Pattern Analysis and VCP tabs.
+  'GET /api/elliott': async (req) => {
+    const url = new URL(req.url, `http://localhost:${PORT}`);
+    const symbol = (url.searchParams.get('symbol') || '').trim();
+    if (!symbol) return { ok: false, error: 'symbol required' };
+    const series = await getSeries(symbol);
+    if (!series.ok) return { ok: false, symbol, error: series.error };
+    // Same guard as /api/patterns: a symbol that returns no data anywhere is an error,
+    // not a valid "no wave count" result — the two mean very different things.
+    if (!Object.values(series.tfs).some(t => t.ok)) {
+      return { ok: false, symbol, error: 'No timeframe returned data: '
+        + Object.entries(series.tfs).map(([k, v]) => `${k}: ${v.error}`).join(' · ') };
+    }
+    return buildElliott(series);
   },
 
   // Minervini VCP tab — SEPA technical screen for one symbol: Trend Template (8),
