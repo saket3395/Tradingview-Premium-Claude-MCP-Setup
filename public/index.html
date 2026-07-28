@@ -14,6 +14,7 @@
     <button class="tab" data-view="tpo">India TPO Scanner</button>
     <button class="tab" data-view="tpo-usa">USA TPO Scanner</button>
     <button class="tab" data-view="patterns">Pattern Analysis</button>
+    <button class="tab" data-view="vcp">VCP Analysis</button>
     <button class="tab" data-view="testing">Testing</button>
     <button class="tab" data-view="analytics">Analytics</button>
   </nav>
@@ -310,6 +311,80 @@
       <ul class="signals" id="pat-conclusion"></ul>
     </div>
     <div class="hint" id="pat-note"></div>
+  </section>
+</main>
+
+<!-- MINERVINI VCP ANALYSIS -->
+<main id="view-vcp" class="hidden">
+  <section class="card span2" id="vcp-card">
+    <h2>Mark Minervini VCP Analysis <small>· Trend Template · true percentile RS · volatility contraction · pivot &amp; risk</small></h2>
+    <div class="tpo-toolbar">
+      <div class="pat-combo">
+        <input id="vcp-symbol" class="pat-input" placeholder="Search a symbol — e.g. RELIANCE, INFY, AAPL"
+               spellcheck="false" autocomplete="off" role="combobox" aria-expanded="false"
+               aria-autocomplete="list" aria-controls="vcp-suggest" />
+        <ul class="pat-suggest hidden" id="vcp-suggest" role="listbox"></ul>
+      </div>
+      <button id="vcp-run" class="btn-confirm">Analyze</button>
+      <span class="pill" id="vcp-src">—</span>
+      <span class="grow"></span>
+      <span class="pill" id="vcp-updated">—</span>
+    </div>
+
+    <details class="tpo-how" id="vcp-how">
+      <summary>How this analysis works</summary>
+      <div class="tpo-how-body">
+        <p><b>Minervini&rsquo;s order of operations, applied literally.</b> First the <b>Trend Template</b> &mdash;
+        eight objective criteria that decide whether a stock is even a candidate. A stock that fails it is
+        rejected outright, however pretty its base looks. Only then is the <b>VCP</b> measured, and only then
+        is a <b>trade plan</b> produced.</p>
+        <p><b>RS Rating is a true percentile</b>, not a proxy. One scan of the full universe ranks every liquid
+        name by <code>(2&times;3-month + 6-month + 1-year) performance / 4</code> &mdash; IBD&rsquo;s construction, which
+        double-weights the most recent quarter &mdash; and this stock&rsquo;s percentile is its position in that
+        list. <b>NSE names are ranked against NSE and US names against US</b>; cross-market percentiles would be
+        meaningless. Names below the liquidity floor (market cap and daily turnover) are excluded from the
+        ranking universe entirely &mdash; unfiltered, illiquid microcaps posting +2,900% annual returns would
+        occupy the whole top decile and make every real name&rsquo;s rating worthless.</p>
+        <p><b>VCP detection.</b> Swings come from a significance-filtered ZigZag; each swing high paired with
+        the following low is one contraction. The base is the last 2&ndash;6 contractions that together satisfy
+        every structural rule: base at least 5 weeks, no deeper than 35%, the final pullback no more than 75%
+        of the first, at most one widening step, and a final contraction of 12% or less. <b>Volume must dry
+        up</b> into the last contraction &mdash; that is the actual signal, supply being exhausted.</p>
+        <p><b>The pivot is the point.</b> Buy-stop above the final contraction&rsquo;s high on at least 1.5&times;
+        average volume; stop at the tighter of the final contraction low or a hard &minus;7%; targets at 2R and
+        3R. A tight pivot is what makes the loss small when it fails &mdash; that is the whole reason for
+        demanding a tight base.</p>
+        <p class="tpo-how-note"><b>Honest scope:</b> this is the <b>technical half of SEPA only</b>. Minervini
+        also requires earnings and sales acceleration and evidence of institutional sponsorship, for which this
+        dashboard has no data. <b>BUY-READY here means &ldquo;the chart qualifies&rdquo;, never &ldquo;buy
+        this&rdquo;.</b> Analysis only &mdash; no orders are placed.</p>
+      </div>
+    </details>
+
+    <div id="vcp-empty" class="empty">Enter a symbol and press Analyze. The box prefills from your active TradingView chart.</div>
+    <div id="vcp-body" class="hidden">
+      <h2>SEPA Verdict</h2>
+      <div class="decision" id="vcp-verdict"></div>
+      <div class="tpo-meta" id="vcp-why"></div>
+
+      <h2 style="margin-top:14px">Trend Template <small>· all eight criteria · ≥7/8 required to proceed</small></h2>
+      <div class="tpo-tablewrap"><table class="tpo-table" id="vcp-tt"></table></div>
+
+      <h2 style="margin-top:14px">Volatility Contractions</h2>
+      <div class="tpo-tablewrap"><table class="tpo-table" id="vcp-contractions"></table></div>
+      <div class="tpo-meta" id="vcp-base"></div>
+
+      <h2 style="margin-top:14px">Trade Plan <small>· pivot, stop and risk</small></h2>
+      <div class="decision" id="vcp-plan"></div>
+      <div class="tpo-meta" id="vcp-sizing"></div>
+
+      <h2 style="margin-top:14px">Stage &amp; RS Context</h2>
+      <div class="tpo-tablewrap"><table class="tpo-table" id="vcp-context"></table></div>
+
+      <h2 style="margin-top:14px">Final Conclusion</h2>
+      <ul class="signals" id="vcp-conclusion"></ul>
+    </div>
+    <div class="hint" id="vcp-note"></div>
   </section>
 </main>
 
