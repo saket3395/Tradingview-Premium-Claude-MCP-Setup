@@ -136,6 +136,7 @@ lib/patterns.mjs    rule-based stage + pattern detection and the top-down report
 lib/indicators.mjs  shared primitives (SMA/ATR/pivots/line fit/ZigZag/RSI) used by every engine
 lib/minervini.mjs   Minervini SEPA: Trend Template, VCP contractions, pivot/stop trade plan
 lib/rs.mjs          percentile RS Rating from the reused TradingView universe scanner
+lib/ratelimit.mjs   ONE process-wide throttle + circuit breaker per upstream provider
 lib/elliott.mjs     Elliott Wave counting: impulse + simple corrections, alternates, invalidation
 server/server.mjs   zero-dep HTTP server + JSON API
 public/             index.html, app.js, style.css  (the dashboard)
