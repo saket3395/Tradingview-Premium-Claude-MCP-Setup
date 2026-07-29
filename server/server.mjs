@@ -127,13 +127,10 @@ const routes = {
     const symbol = (url.searchParams.get('symbol') || '').trim();
     if (!symbol) return { ok: false, error: 'symbol required' };
     const series = await getSeries(symbol);
-    if (!series.ok) return { ok: false, symbol, error: series.error };
-    // Same guard as /api/patterns: a symbol that returns no data anywhere is an error,
-    // not a valid "no wave count" result — the two mean very different things.
-    if (!Object.values(series.tfs).some(t => t.ok)) {
-      return { ok: false, symbol, error: 'No timeframe returned data: '
-        + Object.entries(series.tfs).map(([k, v]) => `${k}: ${v.error}`).join(' · ') };
-    }
+    // getSeries reports ok:false (with a single clear reason) when no timeframe carries
+    // data, so a symbol with no history is an error here — distinct from a valid
+    // "no wave count found", which is a result.
+    if (!series.ok) return { ok: false, symbol, error: series.error, rateLimited: series.rateLimited };
     return buildElliott(series);
   },
 
@@ -146,7 +143,7 @@ const routes = {
     const symbol = (url.searchParams.get('symbol') || '').trim();
     if (!symbol) return { ok: false, error: 'symbol required' };
     const series = await getSeries(symbol);
-    if (!series.ok) return { ok: false, symbol, error: series.error };
+    if (!series.ok) return { ok: false, symbol, error: series.error, rateLimited: series.rateLimited };
     return buildVCP(series);
   },
 
@@ -170,12 +167,7 @@ const routes = {
     const symbol = (url.searchParams.get('symbol') || '').trim();
     if (!symbol) return { ok: false, error: 'symbol required' };
     const series = await getSeries(symbol);
-    if (!series.ok) return { ok: false, symbol, error: series.error };
-    const usable = Object.values(series.tfs).filter(t => t.ok).length;
-    if (!usable) {
-      return { ok: false, symbol, error: 'No timeframe returned data: '
-        + Object.entries(series.tfs).map(([k, v]) => `${k}: ${v.error}`).join(' · ') };
-    }
+    if (!series.ok) return { ok: false, symbol, error: series.error, rateLimited: series.rateLimited };
     return buildReport(series);
   },
 
