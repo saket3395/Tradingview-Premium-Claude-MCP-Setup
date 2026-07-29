@@ -1,7 +1,7 @@
 {
   "markets": {
     "india_intraday": {
-      "label": "🇮🇳 India — Intraday",
+      "label": "\ud83c\uddee\ud83c\uddf3 India \u2014 Intraday",
       "exchanges": [
         "NSE",
         "BSE",
@@ -14,13 +14,13 @@
         "5m",
         "15m"
       ],
-      "session": "09:15–15:30 IST",
+      "session": "09:15\u201315:30 IST",
       "checklist": [
         "Index trend (NIFTY/BANKNIFTY) aligned with trade",
         "Above/below VWAP in trade direction",
         "Relative volume > 1.5x",
         "Clear intraday level (PDH/PDL/ORB/IB) nearby",
-        "Risk ≤ 1R, hard stop set",
+        "Risk \u2264 1R, hard stop set",
         "No event/news spike in next 15m",
         "Square-off plan before 15:20 IST"
       ]
@@ -33,7 +33,8 @@
       "wr": 40,
       "rr": 2.0,
       "minN": 20
-    }
+    },
+    "backtestLimit": 100
   },
   "tpo": {
     "refreshSeconds": 30,

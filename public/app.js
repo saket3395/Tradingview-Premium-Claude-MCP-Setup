@@ -326,12 +326,14 @@ async function switchSymbol(sym) {
     }
     async function backtest(btn) {
       btn.disabled = true; btn.textContent = 'Backtesting… (1-min candles)';
-      const box = $('#test-bt'); box.classList.remove('hidden'); box.innerHTML = '<h3>Running India 1-minute backtest…</h3>';
+      const box = $('#test-bt'); box.classList.remove('hidden');
+      box.innerHTML = '<h3>Running India 1-minute backtest…</h3><div class="prow">Replaying the most recent plans, one Upstox request each, paced to stay under the rate limit.</div>';
       let r; try { r = await api('/api/test/backtest', { method: 'POST' }); } catch (e) { r = { ok: false, error: e.message }; }
       btn.disabled = false; btn.textContent = 'Run India 1-min backtest';
       if (!r.ok) { box.innerHTML = `<h3>Backtest unavailable</h3><div class="prow">${r.error}</div>`; return; }
       const s = r.summary, g = r.gates;
       box.innerHTML = `<h3>India backtest — ${r.tested} plans @ ${r.resolution}${r.skipped ? ` · ${r.skipped} skipped` : ''}</h3>`
+        + (r.note ? `<div class="prow">${r.note}</div>` : '')
         + `<div class="prow">PF <b>${fmt(s.profitFactor)}</b> · WR <b>${fmt(s.winRate)}%</b> · expectancy <b>${fmt(s.expectancyR)}R</b> · total <b>${fmt(s.totalR)}R</b> · fill rate <b>${fmt(s.fillRate)}%</b></div>`
         + `<div class="prow">Gates: PF ${g.pf.pass === true ? '✅' : g.pf.pass === false ? '❌' : '·'} · WR ${g.wr.pass === true ? '✅' : g.wr.pass === false ? '❌' : '·'} · R:R ${g.rr.pass === true ? '✅' : g.rr.pass === false ? '❌' : '·'} ${g.sampleOk ? '' : `(need n≥${g.minN})`}</div>`
         + (r.errors?.length ? `<div class="prow">Skipped: ${r.errors.join(' · ')}</div>` : '');
