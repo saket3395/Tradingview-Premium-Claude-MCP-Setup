@@ -16,6 +16,7 @@
     <button class="tab" data-view="patterns">Pattern Analysis</button>
     <button class="tab" data-view="vcp">VCP Analysis</button>
     <button class="tab" data-view="elliott">Elliott Wave</button>
+    <button class="tab" data-view="cache">Cached Data</button>
     <button class="tab" data-view="testing">Testing</button>
     <button class="tab" data-view="analytics">Analytics</button>
   </nav>
@@ -482,6 +483,55 @@
       <ul class="signals" id="ew-conclusion"></ul>
     </div>
     <div class="hint" id="ew-note"></div>
+  </section>
+</main>
+
+<!-- CACHED DATA -->
+<main id="view-cache" class="hidden">
+  <section class="card span2" id="cache-card">
+    <h2>Cached Data for Analysis <small>· what is held locally · whether a symbol costs a fetch</small></h2>
+    <div class="tpo-toolbar">
+      <div class="pat-combo">
+        <input id="cache-symbol" class="pat-input" placeholder="Check a symbol before analysing it…"
+               spellcheck="false" autocomplete="off" role="combobox" aria-expanded="false"
+               aria-autocomplete="list" aria-controls="cache-suggest" />
+        <ul class="pat-suggest hidden" id="cache-suggest" role="listbox"></ul>
+      </div>
+      <button id="cache-check" class="btn-confirm">Will this fetch?</button>
+      <button id="cache-refresh" class="btn-confirm">Refresh</button>
+      <span class="grow"></span>
+      <span class="pill" id="cache-updated">—</span>
+    </div>
+
+    <details class="tpo-how" id="cache-how">
+      <summary>Why this tab exists</summary>
+      <div class="tpo-how-body">
+        <p><b>Upstox sits behind Cloudflare</b>, whose IP-level block (<code>error code 1015</code>) trips well
+        below the documented API quota and lasts minutes. Analysing a <b>new</b> NSE symbol costs up to
+        <b>5 requests</b> (30-minute, day, week, month, and today's intraday), so a handful of unfamiliar
+        symbols in quick succession is what actually triggers it.</p>
+        <p><b>This tab tells you the cost before you pay it.</b> Type a symbol and press
+        <b>Will this fetch?</b> — it answers entirely from local state and never contacts a provider.
+        <b>Free</b> means the analysis is served from cache and costs nothing.</p>
+        <p><b>How long things stay cached.</b> Settled bars cannot change while the market is shut, so
+        windows fetched after the close stay valid <b>until the next session opens</b> — a symbol you analysed
+        yesterday is free the next morning. Weekly and monthly are held for 30 days because their recent
+        periods are <b>rebuilt exactly from daily</b> (verified at 0.0000% error), so they never go stale.</p>
+        <p class="tpo-how-note">The cache lives in <code>data/history_cache.json</code> and survives restarts.
+        Pacing is set by <code>UPSTOX_MIN_GAP_MS</code> / <code>UPSTOX_MAX_PER_MIN</code> in <code>.env</code>
+        and is shown below, so you can confirm what the server is really using.</p>
+      </div>
+    </details>
+
+    <div class="decision" id="cache-tiles"></div>
+    <div class="tpo-meta" id="cache-verdict"></div>
+
+    <h2 style="margin-top:14px">Providers</h2>
+    <div class="tpo-tablewrap"><table class="tpo-table" id="cache-providers"></table></div>
+
+    <h2 style="margin-top:14px">Cached Symbols <small>· green = analysing costs nothing</small></h2>
+    <div class="tpo-tablewrap"><table class="tpo-table" id="cache-symbols"></table></div>
+    <div class="hint" id="cache-note"></div>
   </section>
 </main>
 
