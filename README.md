@@ -137,6 +137,8 @@ lib/indicators.mjs  shared primitives (SMA/ATR/pivots/line fit/ZigZag/RSI) used 
 lib/minervini.mjs   Minervini SEPA: Trend Template, VCP contractions, pivot/stop trade plan
 lib/rs.mjs          percentile RS Rating from the reused TradingView universe scanner
 lib/ratelimit.mjs   ONE process-wide throttle + circuit breaker per upstream provider
+data/history_cache.json  persisted OHLC windows (gitignored) — survives restarts so a
+                    symbol analysed yesterday needs no requests the next morning
 lib/elliott.mjs     Elliott Wave counting: impulse + simple corrections, alternates, invalidation
 server/server.mjs   zero-dep HTTP server + JSON API
 public/             index.html, app.js, style.css  (the dashboard)
