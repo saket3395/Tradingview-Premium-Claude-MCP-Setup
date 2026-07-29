@@ -17,7 +17,8 @@ import { getCircuit } from '../lib/upstox.mjs';
 import { summary as journalSummary } from '../lib/journal.mjs';
 import { runBacktest } from '../lib/backtest.mjs';
 import { buildAnalytics } from '../lib/analytics.mjs';
-import { getSeries, searchSymbols } from '../lib/history.mjs';
+import { getSeries, searchSymbols, cacheStatus, estimateCost } from '../lib/history.mjs';
+import { providerStatus } from '../lib/ratelimit.mjs';
 import { buildReport } from '../lib/patterns.mjs';
 import { buildVCP } from '../lib/minervini.mjs';
 import { buildElliott } from '../lib/elliott.mjs';
@@ -147,6 +148,19 @@ const routes = {
     const series = await getSeries(symbol);
     if (!series.ok) return { ok: false, symbol, error: series.error, rateLimited: series.rateLimited };
     return buildVCP(series);
+  },
+
+  // Cached Data tab — what history is held locally, and whether analysing a given symbol
+  // would cost upstream requests. Purely local: this route never calls a provider.
+  'GET /api/cache': async () => ({ ...cacheStatus(), providers: providerStatus() }),
+
+  // "If I analyse this symbol now, does it fetch?" — the question the rate limit makes
+  // worth asking before clicking Analyze.
+  'GET /api/cache/cost': async (req) => {
+    const url = new URL(req.url, `http://localhost:${PORT}`);
+    const symbol = (url.searchParams.get('symbol') || '').trim();
+    if (!symbol) return { ok: false, error: 'symbol required' };
+    return estimateCost(symbol);
   },
 
   // Pattern Analysis tab — symbol autocomplete. Reuses TradingView's own public

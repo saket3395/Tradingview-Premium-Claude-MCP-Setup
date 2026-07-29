@@ -154,6 +154,7 @@ async function switchSymbol(sym) {
 (function wireTabsAndTPO() {
   const views = { dashboard: $('#view-dashboard'), tpo: $('#view-tpo'), 'tpo-usa': $('#view-tpo-usa'),
     patterns: $('#view-patterns'), vcp: $('#view-vcp'), elliott: $('#view-elliott'),
+    cache: $('#view-cache'),
     testing: $('#view-testing'), analytics: $('#view-analytics') };
   const tabs = [...document.querySelectorAll('#tabs .tab')];
 
@@ -866,6 +867,76 @@ async function switchSymbol(sym) {
     };
   }
 
+  // ---------- Cached Data ----------
+  // Entirely local: answers "does analysing this cost a request?" without contacting any
+  // provider, which is the point — you check before you spend.
+  function makeCache() {
+    const combo = makeCombo('cache', () => check());
+    const esc = combo.esc;
+    let wired = false;
+
+    async function check() {
+      const sym = $('#cache-symbol').value.trim();
+      if (!sym) return;
+      let r;
+      try { r = await api('/api/cache/cost?symbol=' + encodeURIComponent(sym)); }
+      catch (e) { r = { ok: false, error: e.message }; }
+      const v = $('#cache-verdict');
+      if (!r?.ok) { v.innerHTML = `<span class="tag status-delayed">${esc(r?.error || 'lookup failed')}</span>`; return; }
+      v.innerHTML = `<span class="tag ${r.free ? 'status-live' : 'status-delayed'}"><b>${esc(r.symbol)}</b> — ${r.free ? 'FREE' : r.cost + ' request(s)'}</span>`
+        + `<span class="tag">${esc(r.verdict)}</span>`
+        + (r.blockedForSec ? `<span class="tag status-delayed">${esc(r.provider)} blocked for ${r.blockedForSec}s</span>` : '');
+      refresh();
+    }
+
+    async function refresh() {
+      let r;
+      try { r = await api('/api/cache'); } catch (e) { return; }
+      $('#cache-updated').textContent = 'updated ' + new Date().toLocaleTimeString();
+
+      const d = $('#cache-tiles'); d.innerHTML = '';
+      const tile = (k, val, cls) => { const t = el('div', 'dtile' + (cls ? ' ' + cls : '')); t.append(el('div', 'dk', k), el('div', 'dv', String(val))); d.append(t); };
+      tile('Symbols cached', r.totals.symbols);
+      tile('Free to analyse', r.totals.freeSymbols, r.totals.freeSymbols ? 'good' : '');
+      tile('Windows held', r.totals.windows);
+      tile('NSE session', r.session.nseOpen ? 'open' : 'shut', r.session.nseOpen ? 'good' : '');
+      tile('Next open in', r.session.nseOpen ? '—' : Math.floor(r.session.nextOpenInMin / 60) + 'h ' + (r.session.nextOpenInMin % 60) + 'm');
+
+      $('#cache-providers').innerHTML = `<tr><th>Provider</th><th>State</th><th class="num">Concurrency</th>
+        <th class="num">Min gap</th><th class="num">Max / min</th></tr>`
+        + r.providers.map(p => `<tr><td><b>${esc(p.provider)}</b></td>
+            <td class="${p.blockedForSec ? 'bad' : 'good'}">${p.blockedForSec ? 'rate limited — ' + p.blockedForSec + 's left' : 'ready'}</td>
+            <td class="num">${p.concurrency}</td><td class="num">${p.minGapMs}ms</td><td class="num">${p.maxPerMin}</td></tr>`).join('');
+
+      $('#cache-symbols').innerHTML = r.symbols.length
+        ? `<tr><th>Symbol</th><th>Market</th><th>Cached windows</th><th class="num">Next analysis</th><th>Missing</th><th class="num">Soonest expiry</th></tr>`
+          + r.symbols.map(x => {
+            const soon = x.windows.length ? Math.min(...x.windows.map(w => w.expiresInMin)) : 0;
+            return `<tr><td><b>${esc(x.symbol)}</b></td><td>${x.market === 'india' ? '\ud83c\uddee\ud83c\uddf3 NSE' : '\ud83c\uddfa\ud83c\uddf8 US'}</td>
+              <td>${x.windows.map(w => `${esc(w.interval)} <small>(${w.bars} bars, ${w.ageMin}m old)</small>`).join(' \u00b7 ')}</td>
+              <td class="num ${x.free ? 'good' : 'warn'}"><b>${x.free ? 'FREE' : x.nextAnalysisCost + ' req'}</b></td>
+              <td>${x.missing?.length ? esc(x.missing.join(', ')) : '\u2014'}</td>
+              <td class="num">${soon >= 60 ? Math.floor(soon / 60) + 'h ' + (soon % 60) + 'm' : soon + 'm'}</td></tr>`;
+          }).join('')
+        : `<tr><td class="hint">Nothing cached yet — analyse a symbol and it will appear here.</td></tr>`;
+
+      $('#cache-note').textContent = 'Held in data/history_cache.json and restored on restart. This tab makes no upstream requests.';
+    }
+
+    return {
+      start() {
+        if (!wired) {
+          wired = true;
+          combo.wire();
+          $('#cache-check').addEventListener('click', () => { combo.close(); check(); });
+          $('#cache-refresh').addEventListener('click', refresh);
+        }
+        refresh();
+      },
+      stop() {},
+    };
+  }
+
   // ---------- Dashboard symbol picker ----------
   // Same combobox as the analysis tabs. Picking a symbol switches the TradingView chart
   // to it (the existing best-effort CCP switch) and pins the Signal Summary to it.
@@ -891,6 +962,7 @@ async function switchSymbol(sym) {
     patterns: makePatterns(),
     vcp: makeVCP(),
     elliott: makeElliott(),
+    cache: makeCache(),
     tpo: makeTPO('tpo', '/api/tpo/scan'),
     'tpo-usa': makeTPO('utpo', '/api/tpo/scan/usa'),
     testing: makeTesting(),

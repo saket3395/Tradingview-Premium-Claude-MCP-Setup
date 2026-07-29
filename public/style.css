@@ -164,7 +164,9 @@ footer{color:var(--mut);font-size:11px;text-align:center;padding:14px}
 #pat-card .tpo-table td.warn,#vcp-card .tpo-table td.warn,#ew-card .tpo-table td.warn,
 #ew-card .tpo-table .warn{color:var(--amb)}
 #pat-card .tpo-table td,#vcp-card .tpo-table td,#ew-card .tpo-table td{vertical-align:top}
-#pat-card h2,#vcp-card h2,#ew-card h2{margin-top:10px}
+#pat-card h2,#vcp-card h2,#ew-card h2,#cache-card h2{margin-top:10px}
+#cache-card .tpo-table td.good{color:var(--grn)} #cache-card .tpo-table td.bad{color:var(--red)}
+#cache-card .tpo-table td.warn{color:var(--amb)} #cache-card .tpo-table td{vertical-align:top}
 .pat-combo{position:relative;flex:0 1 340px;min-width:240px}
 .pat-combo .pat-input{width:100%;flex:none}
 .pat-suggest{position:absolute;z-index:20;top:calc(100% + 4px);left:0;right:0;margin:0;padding:4px;
