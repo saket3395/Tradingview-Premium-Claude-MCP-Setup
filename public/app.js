@@ -4,11 +4,12 @@ const el = (t, c, html) => { const e = document.createElement(t); if (c) e.class
 const api = (p, opt) => fetch(p, opt).then(r => r.json());
 
 let CONFIG = null, POLL_MS = 7000, timer = null;
-// Symbol on the active TradingView chart — used to prefill the analysis tabs.
-let CHART_SYMBOL = '';
-// Symbol under analysis, shared by Pattern Analysis and VCP so switching methodology keeps
-// you on the same name (and reuses the server-side history cache).
+// Symbol under analysis, shared by the three analysis tabs so switching methodology keeps
+// you on the same name (and reuses the server-side history cache). Set only by you.
 let SELECTED_SYMBOL = '';
+// Symbol the Dashboard's Signal Summary is showing. Empty until you load one — the panel
+// no longer follows whichever TradingView chart happens to be fronted.
+let DASHBOARD_SYMBOL = '';
 
 // ---------- init ----------
 (async function init() {
@@ -27,7 +28,6 @@ function stop() { clearInterval(timer); timer = null; }
 // ---------- poll loop ----------
 async function poll() {
   let snap; try { snap = await api('/api/snapshot'); } catch { snap = { status: { up: false } }; }
-  if (snap.chart && snap.chart.symbol) CHART_SYMBOL = snap.chart.symbol;
   renderHealth(snap.status);
   renderSignals(snap.signals, snap.chart);
   renderScans(snap.watchlist || []);
@@ -49,7 +49,20 @@ function renderHealth(st = {}) {
 
 // ---------- signal summary ----------
 function renderSignals(s, chart) {
+  const bare = x => String(x || '').split(':').pop().trim().toUpperCase().replace(/\s+/g, '');
+  if (!DASHBOARD_SYMBOL) {
+    $('#signal-empty').textContent = 'Enter a symbol above and press Load — the Signal Summary reads that symbol from your TradingView chart.';
+    $('#signal-empty').classList.remove('hidden'); $('#signal-body').classList.add('hidden');
+    return;
+  }
   if (!s) { $('#signal-empty').classList.remove('hidden'); $('#signal-body').classList.add('hidden'); return; }
+  // The chart switcher is best-effort, so never present another symbol's legend as
+  // the one you asked for.
+  if (chart && bare(chart.symbol) !== bare(DASHBOARD_SYMBOL)) {
+    $('#signal-empty').textContent = `Waiting for TradingView to load ${DASHBOARD_SYMBOL} — the chart currently shows ${chart.symbol || '—'}. Bring a chart tab to the front and press Load again.`;
+    $('#signal-empty').classList.remove('hidden'); $('#signal-body').classList.add('hidden');
+    return;
+  }
   $('#signal-empty').classList.add('hidden'); $('#signal-body').classList.remove('hidden');
   $('#sig-sym').textContent = s.symbol || '—';
   $('#sig-tf').textContent = s.interval || '';
@@ -326,12 +339,14 @@ async function switchSymbol(sym) {
     }
     async function backtest(btn) {
       btn.disabled = true; btn.textContent = 'Backtesting… (1-min candles)';
-      const box = $('#test-bt'); box.classList.remove('hidden'); box.innerHTML = '<h3>Running India 1-minute backtest…</h3>';
+      const box = $('#test-bt'); box.classList.remove('hidden');
+      box.innerHTML = '<h3>Running India 1-minute backtest…</h3><div class="prow">Replaying the most recent plans, one Upstox request each, paced to stay under the rate limit.</div>';
       let r; try { r = await api('/api/test/backtest', { method: 'POST' }); } catch (e) { r = { ok: false, error: e.message }; }
       btn.disabled = false; btn.textContent = 'Run India 1-min backtest';
       if (!r.ok) { box.innerHTML = `<h3>Backtest unavailable</h3><div class="prow">${r.error}</div>`; return; }
       const s = r.summary, g = r.gates;
       box.innerHTML = `<h3>India backtest — ${r.tested} plans @ ${r.resolution}${r.skipped ? ` · ${r.skipped} skipped` : ''}</h3>`
+        + (r.note ? `<div class="prow">${r.note}</div>` : '')
         + `<div class="prow">PF <b>${fmt(s.profitFactor)}</b> · WR <b>${fmt(s.winRate)}%</b> · expectancy <b>${fmt(s.expectancyR)}R</b> · total <b>${fmt(s.totalR)}R</b> · fill rate <b>${fmt(s.fillRate)}%</b></div>`
         + `<div class="prow">Gates: PF ${g.pf.pass === true ? '✅' : g.pf.pass === false ? '❌' : '·'} · WR ${g.wr.pass === true ? '✅' : g.wr.pass === false ? '❌' : '·'} · R:R ${g.rr.pass === true ? '✅' : g.rr.pass === false ? '❌' : '·'} ${g.sampleOk ? '' : `(need n≥${g.minN})`}</div>`
         + (r.errors?.length ? `<div class="prow">Skipped: ${r.errors.join(' · ')}</div>` : '');
@@ -510,7 +525,7 @@ async function switchSymbol(sym) {
     const num = x => x == null ? '—' : (x > 0 ? '+' : '') + x;
     const biasCls = b => /Strong Bullish|Bullish/.test(b) ? 'good' : /Bearish/.test(b) ? 'bad' : 'warn';
     const statusCls = s => s === 'Confirmed' ? 'good' : s === 'Failed' ? 'bad' : 'warn';
-    let autoRan = false, busy = false;
+    let busy = false;
 
     async function run() {
       const sym = $('#pat-symbol').value.trim();
@@ -599,9 +614,10 @@ async function switchSymbol(sym) {
           combo.wire();
           $('#pat-run').addEventListener('click', () => { combo.close(); run(); });
         }
-        const want = SELECTED_SYMBOL || CHART_SYMBOL;
-        if (want && $('#pat-symbol').value !== want) { $('#pat-symbol').value = want; autoRan = false; }
-        if (!autoRan && $('#pat-symbol').value) { autoRan = true; run(); }
+        // Deliberately no auto-detect and no auto-run: analysis happens only when you
+        // ask for it. The box carries the symbol you last analysed so you can switch
+        // methodology on one name, but you still press Analyze.
+        if (SELECTED_SYMBOL && !$('#pat-symbol').value) $('#pat-symbol').value = SELECTED_SYMBOL;
       },
       stop() {},
     };
@@ -617,7 +633,7 @@ async function switchSymbol(sym) {
     const num = x => x == null ? '\u2014' : (x > 0 ? '+' : '') + x;
     const vCls = v => v === 'BUY-READY' ? 'good' : v === 'SETUP FORMING' ? 'warn'
       : v === 'EXTENDED' ? 'warn' : v === 'WATCH' ? '' : 'bad';
-    let autoRan = false, busy = false;
+    let busy = false;
 
     async function run() {
       const sym = $('#vcp-symbol').value.trim();
@@ -721,9 +737,10 @@ async function switchSymbol(sym) {
           combo.wire();
           $('#vcp-run').addEventListener('click', () => { combo.close(); run(); });
         }
-        const want = SELECTED_SYMBOL || CHART_SYMBOL;
-        if (want && $('#vcp-symbol').value !== want) { $('#vcp-symbol').value = want; autoRan = false; }
-        if (!autoRan && $('#vcp-symbol').value) { autoRan = true; run(); }
+        // Deliberately no auto-detect and no auto-run: analysis happens only when you
+        // ask for it. The box carries the symbol you last analysed so you can switch
+        // methodology on one name, but you still press Analyze.
+        if (SELECTED_SYMBOL && !$('#vcp-symbol').value) $('#vcp-symbol').value = SELECTED_SYMBOL;
       },
       stop() {},
     };
@@ -739,7 +756,7 @@ async function switchSymbol(sym) {
     const num = x => x == null ? '\u2014' : (x > 0 ? '+' : '') + x;
     const cCls = c => c >= 65 ? 'good' : c >= 45 ? 'warn' : '';
     const yn = v => v == null ? '<span class="warn">n/a</span>' : v ? '<span class="good">\u2713</span>' : '<span class="bad">\u2717</span>';
-    let autoRan = false, busy = false;
+    let busy = false;
 
     async function run() {
       const sym = $('#ew-symbol').value.trim();
@@ -840,13 +857,35 @@ async function switchSymbol(sym) {
           combo.wire();
           $('#ew-run').addEventListener('click', () => { combo.close(); run(); });
         }
-        const want = SELECTED_SYMBOL || CHART_SYMBOL;
-        if (want && $('#ew-symbol').value !== want) { $('#ew-symbol').value = want; autoRan = false; }
-        if (!autoRan && $('#ew-symbol').value) { autoRan = true; run(); }
+        // Deliberately no auto-detect and no auto-run: analysis happens only when you
+        // ask for it. The box carries the symbol you last analysed so you can switch
+        // methodology on one name, but you still press Analyze.
+        if (SELECTED_SYMBOL && !$('#ew-symbol').value) $('#ew-symbol').value = SELECTED_SYMBOL;
       },
       stop() {},
     };
   }
+
+  // ---------- Dashboard symbol picker ----------
+  // Same combobox as the analysis tabs. Picking a symbol switches the TradingView chart
+  // to it (the existing best-effort CCP switch) and pins the Signal Summary to it.
+  const dashCombo = makeCombo('dash', () => loadDashSymbol());
+  async function loadDashSymbol() {
+    const sym = $('#dash-symbol').value.trim();
+    if (!sym) return;
+    $('#dash-state').textContent = 'loading ' + sym + '…';
+    DASHBOARD_SYMBOL = sym;
+    try {
+      const r = await api('/api/chart/symbol', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ symbol: sym }),
+      });
+      $('#dash-state').textContent = r?.ok ? 'showing ' + sym : 'chart switch failed — ' + (r?.error || 'bring a chart tab to the front');
+    } catch (e) { $('#dash-state').textContent = 'chart switch failed — ' + e.message; }
+    poll();                       // refresh the panel immediately, no Upstox involved
+  }
+  dashCombo.wire();
+  $('#dash-load').addEventListener('click', () => { dashCombo.close(); loadDashSymbol(); });
 
   const controllers = {
     patterns: makePatterns(),

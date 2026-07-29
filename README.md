@@ -90,7 +90,7 @@ npm run tv -- pine:compile
 
 ## Configuration
 - `config/markets.json` — India-intraday labels/exchanges/timeframes/checklist; `tpo` block:
-  `refreshSeconds`, `noNewEntryBeforeCloseMin`, and per-market thresholds
+  `refreshSeconds`, `noNewEntryBeforeCloseMin`, `testing.backtestLimit` (how many recent plans the 1-minute backtest replays — each costs one Upstox request), and per-market thresholds
   (`minScore`/`minRR`/`minRVol`/…). `tpo.india.circuitBandPct` is the **assumed** Stage-1 circuit
   band (default 10%); Confirm replaces it with the real Upstox circuit.
 - `.env` — `PORT`, `TV_CDP`, `TV_NO_ACTIVATE`, and `UPSTOX_TOKEN_FILE` (path to a JSON

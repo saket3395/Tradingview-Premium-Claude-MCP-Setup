@@ -36,9 +36,13 @@
     <details class="tpo-how" id="sig-how">
       <summary>How to Use Signal Summary</summary>
       <div class="tpo-how-body">
-        <p>Signal Summary reads the indicators <b>already on your active TradingView chart</b> (EMA stack,
-        RSI, Balance of Power, VWAP) and distils them into an at-a-glance intraday read. It does not place
-        trades and never invents data — anything missing from the chart shows as <code>n/a</code>.</p>
+        <p>Signal Summary reads the indicators <b>already on your TradingView chart</b> (EMA stack, RSI,
+        Balance of Power, VWAP) and distils them into an at-a-glance intraday read. It does not place trades
+        and never invents data — anything missing from the chart shows as <code>n/a</code>.</p>
+        <p><b>You choose the symbol.</b> Type it above and press <b>Load</b>: the dashboard switches your
+        TradingView chart to that symbol and reads it. It deliberately does <b>not</b> follow whichever chart
+        tab happens to be fronted, so the panel never silently changes under you — and if the chart switch
+        does not take, it says so rather than showing another symbol's numbers.</p>
         <p><b>How to combine the metrics:</b> start with <b>Market Bias</b> + <b>Trend</b> (direction),
         confirm with <b>Signal Strength</b> + <b>Confidence</b> (is the evidence lopsided or conflicted?),
         sanity-check <b>Volume Confirmation</b> and <b>Risk Level</b>, then read <b>Entry Readiness</b> as the
@@ -55,7 +59,18 @@
       </div>
     </details>
 
-    <div id="signal-empty" class="empty">Connect TradingView (CDP) to read the active chart.</div>
+    <div class="tpo-toolbar">
+      <div class="pat-combo">
+        <input id="dash-symbol" class="pat-input" placeholder="Search a symbol — e.g. RELIANCE, INFY, AAPL"
+               spellcheck="false" autocomplete="off" role="combobox" aria-expanded="false"
+               aria-autocomplete="list" aria-controls="dash-suggest" />
+        <ul class="pat-suggest hidden" id="dash-suggest" role="listbox"></ul>
+      </div>
+      <button id="dash-load" class="btn-confirm">Load</button>
+      <span class="pill" id="dash-state">no symbol</span>
+    </div>
+
+    <div id="signal-empty" class="empty">Enter a symbol above and press Load — the Signal Summary reads that symbol from your TradingView chart.</div>
     <div id="signal-body" class="hidden">
       <div class="sigtop">
         <div class="sym" id="sig-sym">—</div>
@@ -484,15 +499,19 @@
         <p><b>Outcomes:</b> WIN = Target-1 hit (realized R = planned R:R) · LOSS = stop hit (−1R) ·
         SCRATCH = session expired, marked at the last price. Stats need <b>n ≥ 20</b> closed trades before
         gates show pass/fail — until then they read <i>insufficient sample</i>, honestly.</p>
-        <p><b>India 1-minute backtest.</b> The button below replays every journaled India plan against real
+        <p><b>India 1-minute backtest.</b> The button below replays the <b>most recent journaled India plans</b>
+        (<code>testing.backtestLimit</code>, default 100) against real
         <b>Upstox 1-minute historical candles</b> — exact fills, stop-outs and targets (conservative: if one
-        candle touches both stop and target it counts as a loss). Needs your daily Upstox token. USA stays
-        forward-test only — there is no free intraday history source, and this dashboard never fabricates data.</p>
+        candle touches both stop and target it counts as a loss). <b>Each plan costs one Upstox request</b>, so the
+        run is deliberately bounded and rate-limited: an unbounded replay of the whole journal was both a
+        multi-minute request the browser would abandon and the single largest source of upstream load. Raise the
+        limit in <code>config/markets.json</code> if you want a wider sample. USA stays forward-test only — there is
+        no free intraday history source, and this dashboard never fabricates data.</p>
       </div>
     </details>
     <div class="tpo-toolbar">
       <button id="test-refresh" class="btn-confirm">Refresh</button>
-      <button id="test-backtest" class="btn-confirm">Run India 1-min backtest</button>
+      <button id="test-backtest" class="btn-confirm" title="Replays the most recent plans (config: testing.backtestLimit). Each plan costs one Upstox request, so the run is bounded and rate-limited.">Run India 1-min backtest <small>(recent 100)</small></button>
       <span class="pill" id="test-updated">—</span>
     </div>
     <div class="tpo-meta" id="test-gates"></div>

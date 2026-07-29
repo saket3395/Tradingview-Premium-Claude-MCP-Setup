@@ -107,9 +107,11 @@ const routes = {
   },
 
   // Testing tab — 1-minute Upstox replay of journaled India plans (on demand).
-  'POST /api/test/backtest': async () => {
+  'POST /api/test/backtest': async (req) => {
     const cfg = json(await readFileP(join(ROOT, 'config', 'markets.json'), 'utf8'));
-    return runBacktest(cfg.testing?.gates);
+    const url = new URL(req.url, `http://localhost:${PORT}`);
+    const limit = Number(url.searchParams.get('limit')) || cfg.testing?.backtestLimit || 100;
+    return runBacktest(cfg.testing?.gates, limit);
   },
 
   // Analytics tab — Monte Carlo + HMM regime + robustness, from real outcomes.
