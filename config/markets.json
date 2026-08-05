@@ -59,5 +59,23 @@
       "top": 40,
       "minEntryQuality": 45
     }
+  },
+  "breakouts": {
+    "candidates": 10,
+    "maxDistPct": 5,
+    "maxAbovePct": 1,
+    "maxFromHighPct": 15,
+    "minConfidence": 55,
+    "top": 25,
+    "india": {
+      "minPrice": 20,
+      "minAvgVol": 200000,
+      "minMarketCap": 5000000000
+    },
+    "usa": {
+      "minPrice": 5,
+      "minAvgVol": 300000,
+      "minMarketCap": 300000000
+    }
   }
 }

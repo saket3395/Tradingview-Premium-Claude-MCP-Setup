@@ -16,6 +16,8 @@
     <button class="tab" data-view="patterns">Pattern Analysis</button>
     <button class="tab" data-view="vcp">VCP Analysis</button>
     <button class="tab" data-view="elliott">Elliott Wave</button>
+    <button class="tab" data-view="brk">Breakout-Patterns</button>
+    <button class="tab" data-view="brk2">VCP/Elliott-Breakout</button>
     <button class="tab" data-view="cache">Cached Data</button>
     <button class="tab" data-view="testing">Testing</button>
     <button class="tab" data-view="analytics">Analytics</button>
@@ -483,6 +485,122 @@
       <ul class="signals" id="ew-conclusion"></ul>
     </div>
     <div class="hint" id="ew-note"></div>
+  </section>
+</main>
+
+<!-- BREAKOUT-PATTERNS (universe scan → stocks closest to a chart-pattern pivot) -->
+<main id="view-brk" class="hidden">
+  <section class="card span2" id="brk-card">
+    <h2>Breakout-Patterns <small>· stocks closest to clearing a chart-pattern pivot · real OHLC · high-quality only</small></h2>
+    <div class="tpo-toolbar">
+      <label class="pill">region <select id="brk-region"><option value="india" selected>🇮🇳 India (NSE)</option><option value="usa">🇺🇸 USA</option></select></label>
+      <label class="pill">timeframe <select id="brk-tf"><option>4H</option><option selected>1D</option><option>1W</option><option>1M</option></select></label>
+      <label class="pill">pattern <select id="brk-pattern">
+        <option value="all" selected>All bullish patterns</option>
+        <option>Ascending Triangle</option><option>Symmetrical Triangle</option><option>Rectangle</option>
+        <option>Falling Wedge</option><option>Ascending Channel</option><option>Bull Flag</option>
+        <option>Pennant</option><option>Cup &amp; Handle</option><option>VCP</option>
+        <option>Double Bottom</option><option>Inverse Head &amp; Shoulders</option><option>Breakout</option>
+        <option>Breakout Retest</option><option>Trend Continuation</option><option>Trend Reversal</option>
+      </select></label>
+      <button id="brk-run" class="btn-confirm">Scan</button>
+      <span class="grow"></span>
+      <span class="pill" id="brk-updated">—</span>
+    </div>
+
+    <details class="tpo-how" id="brk-how">
+      <summary>How this scan works — and what it costs</summary>
+      <div class="tpo-how-body">
+        <p><b>Two stages, deliberately.</b> <b>Stage 1</b> is one server-side TradingView scanner request for the
+        <b>whole universe</b> (~2,900 NSE / ~5,000 US primary stocks). It keeps only names in a genuine uptrend
+        (close above the 50-day <i>and</i> 200-day MA, 6-month performance positive) that are already
+        <b>within 15% of their 52-week high</b>, then ranks them by how close they are, their momentum and their
+        relative volume. <b>Stage 2</b> fetches <b>real 4H/Daily/Weekly/Monthly OHLC</b> for the top candidates
+        and runs the <b>same detectors as the Pattern Analysis tab</b> — nothing here is approximated.</p>
+        <p><b>Why the shortlist is small.</b> A fresh NSE symbol costs up to five Upstox requests and Upstox's
+        Cloudflare block trips well below the documented quota. <code>breakouts.candidates</code> (default 10)
+        caps the deep pass, it runs sequentially through the shared rate limiter, and if the limiter trips
+        mid-scan the scan <b>stops and says so</b> rather than presenting a partial result as complete. Results
+        are cached for 10 minutes per filter combination — re-scanning the same filters costs nothing.</p>
+        <p><b>What "closest to breakout" means.</b> Each bullish detection carries the level that must be
+        cleared (<b>pivot / trigger / neckline / resistance</b>). <b>Distance</b> is that level relative to the
+        last close: <b>AT PIVOT</b> ≤0.5% · <b>NEAR</b> ≤2% · <b>APPROACHING</b> ≤5%. Levels already cleared by
+        more than 1% are dropped — the low-risk entry has passed.</p>
+        <p class="tpo-how-note"><b>Long-only by definition</b> — a breakout is the level <i>above</i> price.
+        Bearish structures (double top, head &amp; shoulders, breakdown) are still reported per symbol on the
+        Pattern Analysis tab. Only detections at <b>≥55% confidence</b> qualify, so an empty table is an honest
+        "nothing is close". Analysis only — no orders are placed.</p>
+      </div>
+    </details>
+
+    <div class="tpo-meta" id="brk-meta">Pick your filters and press Scan.</div>
+    <div class="tpo-tablewrap">
+      <table class="tpo-table" id="brk-table">
+        <thead><tr>
+          <th>Symbol</th><th class="num">Price</th><th>Pattern</th><th>TF</th><th>Status</th>
+          <th class="num">Breakout level</th><th class="num">Distance</th><th>Readiness</th>
+          <th class="num">Confidence</th><th class="num">Score</th><th class="num">Target</th>
+          <th>Stage</th><th class="num">rVol</th><th>Evidence</th>
+        </tr></thead>
+        <tbody id="brk-body"></tbody>
+      </table>
+    </div>
+    <div class="tpo-meta" id="brk-skipped"></div>
+    <div class="hint" id="brk-note"></div>
+  </section>
+</main>
+
+<!-- VCP / ELLIOTT-BREAKOUT (same pipeline, methodology engines) -->
+<main id="view-brk2" class="hidden">
+  <section class="card span2" id="brk2-card">
+    <h2>VCP / Elliott-Breakout <small>· stocks closest to a Minervini pivot or the wave level that must be cleared</small></h2>
+    <div class="tpo-toolbar">
+      <label class="pill">region <select id="brk2-region"><option value="india" selected>🇮🇳 India (NSE)</option><option value="usa">🇺🇸 USA</option></select></label>
+      <label class="pill">timeframe <select id="brk2-tf"><option>4H</option><option selected>1D</option><option>1W</option><option>1M</option></select></label>
+      <label class="pill">type <select id="brk2-type"><option value="vcp" selected>VCP (Minervini)</option><option value="elliott">Elliott Wave</option></select></label>
+      <button id="brk2-run" class="btn-confirm">Scan</button>
+      <span class="grow"></span>
+      <span class="pill" id="brk2-updated">—</span>
+    </div>
+
+    <details class="tpo-how" id="brk2-how">
+      <summary>How this scan works — and what it costs</summary>
+      <div class="tpo-how-body">
+        <p><b>Same two-stage pipeline as Breakout-Patterns</b> (full-universe screen server-side, then real OHLC
+        for the shortlist), with the pivot measured by a methodology engine instead of the chart-pattern
+        detectors.</p>
+        <p><b>VCP (Minervini).</b> Each candidate runs the <b>full SEPA technical screen</b> from the VCP
+        Analysis tab — Trend Template (≥7/8 required), true percentile RS Rating, and a valid volatility
+        contraction base. Only names with a real base and a pivot within range are listed; the breakout level is
+        the <b>final contraction's high</b>, with the stop and 2R/3R targets from the same trade plan. VCP bases
+        are measured on <b>daily bars by construction</b>, so the timeframe filter does not apply to this engine
+        (the tab says so when you change it).</p>
+        <p><b>Elliott Wave.</b> The wave count runs at <b>your chosen timeframe's degree</b>. Only a live
+        <b>up-impulse in wave 3 or wave 5</b> poses a breakout question, and the level to clear is the previous
+        same-direction wave's extreme (the wave 1 high for a wave 3, the wave 3 high for a wave 5). Corrections,
+        completed counts and down impulses have no upside trigger and are excluded. Every row carries its
+        <b>invalidation level</b> — that, not the label, is the number to trade against.</p>
+        <p class="tpo-how-note"><b>Honest scope:</b> VCP here is the <b>technical half of SEPA only</b> (no
+        earnings or sponsorship data), and a wave count is <b>one interpretation among several</b> that re-labels
+        as new bars print. <b>Distance</b> bands and the 10-minute result cache work exactly as on the
+        Breakout-Patterns tab. Analysis only — no orders are placed.</p>
+      </div>
+    </details>
+
+    <div class="tpo-meta" id="brk2-meta">Pick your filters and press Scan.</div>
+    <div class="tpo-tablewrap">
+      <table class="tpo-table" id="brk2-table">
+        <thead><tr>
+          <th>Symbol</th><th class="num">Price</th><th>Type</th><th>TF</th><th>Verdict</th>
+          <th class="num">Breakout level</th><th class="num">Distance</th><th>Readiness</th>
+          <th class="num">Stop / invalidation</th><th class="num">Targets</th>
+          <th class="num">Confidence</th><th class="num">Score</th><th>Evidence</th>
+        </tr></thead>
+        <tbody id="brk2-body"></tbody>
+      </table>
+    </div>
+    <div class="tpo-meta" id="brk2-skipped"></div>
+    <div class="hint" id="brk2-note"></div>
   </section>
 </main>
 
