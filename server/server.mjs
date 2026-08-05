@@ -22,6 +22,7 @@ import { providerStatus } from '../lib/ratelimit.mjs';
 import { buildReport } from '../lib/patterns.mjs';
 import { buildVCP } from '../lib/minervini.mjs';
 import { buildElliott } from '../lib/elliott.mjs';
+import { scanBreakouts } from '../lib/breakouts.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 loadEnv(join(ROOT, '.env'));
@@ -148,6 +149,29 @@ const routes = {
     const series = await getSeries(symbol);
     if (!series.ok) return { ok: false, symbol, error: series.error, rateLimited: series.rateLimited };
     return buildVCP(series);
+  },
+
+  // Breakout-Patterns tab and VCP/Elliott-Breakout tab — stocks CLOSEST to an upside
+  // breakout. Both tabs are one pipeline (lib/breakouts.mjs) differing only in which
+  // existing engine measures the pivot, so the filters below are shared:
+  //   region=india|usa · tf=4H|1D|1W|1M · pattern=<name>|all (patterns engine)
+  //   type=vcp|elliott (second tab). Deliberately on demand — the deep pass costs
+  //   provider requests, and the result is cached for 10 minutes per filter combination.
+  'GET /api/breakouts': async (req) => {
+    const cfg = json(await readFileP(join(ROOT, 'config', 'markets.json'), 'utf8'));
+    const url = new URL(req.url, `http://localhost:${PORT}`);
+    const market = url.searchParams.get('region') === 'usa' ? 'usa' : 'india';
+    const type = (url.searchParams.get('type') || '').toLowerCase();
+    const engine = type === 'vcp' ? 'vcp' : type === 'elliott' ? 'elliott' : 'patterns';
+    try {
+      return await scanBreakouts({
+        engine, market,
+        tf: url.searchParams.get('tf') || '1D',
+        patternType: url.searchParams.get('pattern') || 'all',
+        candidates: Number(url.searchParams.get('candidates')) || undefined,
+        cfg: { ...(cfg.breakouts || {}), ...(cfg.breakouts?.[market] || {}) },
+      });
+    } catch (e) { return { ok: false, error: e.message }; }
   },
 
   // Cached Data tab — what history is held locally, and whether analysing a given symbol

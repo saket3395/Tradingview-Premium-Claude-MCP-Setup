@@ -154,7 +154,7 @@ async function switchSymbol(sym) {
 (function wireTabsAndTPO() {
   const views = { dashboard: $('#view-dashboard'), tpo: $('#view-tpo'), 'tpo-usa': $('#view-tpo-usa'),
     patterns: $('#view-patterns'), vcp: $('#view-vcp'), elliott: $('#view-elliott'),
-    cache: $('#view-cache'),
+    brk: $('#view-brk'), brk2: $('#view-brk2'), cache: $('#view-cache'),
     testing: $('#view-testing'), analytics: $('#view-analytics') };
   const tabs = [...document.querySelectorAll('#tabs .tab')];
 
@@ -867,6 +867,103 @@ async function switchSymbol(sym) {
     };
   }
 
+  // ---------- Breakout scanners (Breakout-Patterns + VCP/Elliott-Breakout) ----------
+  // Both tabs are one implementation over /api/breakouts; `mode` only decides which
+  // engine the server runs and which columns the table renders. On demand only: the
+  // deep pass costs provider requests, so nothing here polls.
+  function makeBreakouts(prefix, mode) {
+    const id = s => document.getElementById(prefix + '-' + s);
+    const esc = s => String(s ?? '').replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m]));
+    const fmt = x => x == null ? '—' : x;
+    const num = x => x == null ? '—' : (x > 0 ? '+' : '') + x;
+    const rCls = r => r === 'AT PIVOT' ? 'good' : r === 'NEAR' ? 'warn' : '';
+    const cols = mode === 'patterns' ? 14 : 13;
+    let busy = false;
+
+    function query() {
+      const p = new URLSearchParams({ region: id('region').value, tf: id('tf').value });
+      if (mode === 'patterns') p.set('pattern', id('pattern').value);
+      else p.set('type', id('type').value);
+      return '/api/breakouts?' + p.toString();
+    }
+
+    async function run() {
+      if (busy) return;
+      busy = true;
+      const meta = id('meta'), body = id('body');
+      meta.textContent = 'Stage 1: screening the universe… Stage 2 then fetches real OHLC for the shortlist (this can take a minute).';
+      body.innerHTML = '';
+      let r;
+      try { r = await api(query()); } catch (e) { r = { ok: false, error: e.message }; }
+      busy = false;
+      id('updated').textContent = 'updated ' + new Date().toLocaleTimeString();
+      if (!r || !r.ok) { meta.innerHTML = `<span class="tag status-delayed">Scan failed — ${esc(r?.error || 'request failed')}</span>`; return; }
+
+      meta.innerHTML = '';
+      const st = r.dataStatus || 'unknown';
+      meta.append(el('span', 'tag status-' + st, st === 'live' ? '🟢 LIVE' : st === 'delayed' ? '🔴 delayed' : st === 'closed' ? '⚪ market closed' : 'status —'));
+      const tag = (k, v, cls) => meta.append(el('span', 'tag' + (cls ? ' ' + cls : ''), `${k} <b>${v}</b>`));
+      tag('region', r.marketLabel);
+      tag('timeframe', r.timeframe + (r.timeframe !== r.requestedTimeframe ? ` · ${r.requestedTimeframe} not applicable to this engine` : ''));
+      if (mode === 'patterns') tag('pattern', r.patternType === 'all' ? 'all bullish' : r.patternType);
+      tag('universe', r.universe);
+      tag('in uptrend near highs', r.prefiltered);
+      tag('deep-analysed', `${r.analysed} / ${r.candidates}`);
+      tag('candidates found', r.count, r.count ? 'status-live' : '');
+      if (r.cached) tag('cache', '10-min result');
+      if (r.stoppedEarly) meta.append(el('span', 'tag status-delayed', esc(r.stoppedEarly)));
+
+      if (!r.rows.length) {
+        body.innerHTML = `<tr><td colspan="${cols}" class="tpo-empty">Nothing within ${r.thresholds.maxDistPct}% of a breakout level in this selection — an empty table is an honest answer. Widen the timeframe or raise <code>breakouts.candidates</code> in config/markets.json.</td></tr>`;
+      } else if (mode === 'patterns') {
+        body.innerHTML = r.rows.map(x => `<tr>
+          <td class="sym">${esc(x.symbol)}</td><td class="num">${fmt(x.price)}</td>
+          <td><b>${esc(x.pattern)}</b></td><td>${esc(x.timeframe)}</td>
+          <td class="${x.status === 'Confirmed' ? 'good' : 'warn'}"><b>${esc(x.status)}</b></td>
+          <td class="num"><b>${fmt(x.breakoutLevel)}</b><div class="ezone">${esc(x.levelLabel)}</div></td>
+          <td class="num rr">${num(x.distPct)}%</td>
+          <td><span class="st ${rCls(x.readiness)}">${esc(x.readiness)}</span></td>
+          <td class="num">${x.confidence}%</td><td class="num"><b>${x.score}</b>/10</td>
+          <td class="num">${fmt(x.target)}</td><td>${esc(x.stage)}</td><td class="num">${fmt(x.rvol)}</td>
+          <td class="reason">${esc(x.detail)}</td></tr>`).join('');
+      } else {
+        body.innerHTML = r.rows.map(x => `<tr>
+          <td class="sym">${esc(x.symbol)}</td><td class="num">${fmt(x.price)}</td>
+          <td><b>${esc(x.type)}</b></td><td>${esc(x.timeframe)}</td>
+          <td class="${x.verdict === 'BUY-READY' ? 'good' : 'warn'}"><b>${esc(x.verdict)}</b></td>
+          <td class="num"><b>${fmt(x.breakoutLevel)}</b></td>
+          <td class="num rr">${num(x.distPct)}%</td>
+          <td><span class="st ${rCls(x.readiness)}">${esc(x.readiness)}</span></td>
+          <td class="num">${fmt(x.invalidation)}</td>
+          <td class="num">${x.targets?.length ? x.targets.join(' / ') : '—'}${x.rr ? ` <small>(${x.rr}R)</small>` : ''}</td>
+          <td class="num">${fmt(x.confidence)}%</td><td class="num"><b>${fmt(x.score)}</b>/10</td>
+          <td class="reason">${esc(x.detail)}</td></tr>`).join('');
+      }
+
+      id('skipped').innerHTML = r.skipped?.length
+        ? `<span class="tag">rejected in Stage 2 — ${r.skipped.map(esc).join(' · ')}</span>` : '';
+      id('note').textContent = r.note || '';
+    }
+
+    let wired = false;
+    return {
+      start() {
+        if (!wired) {
+          wired = true;
+          id('run').addEventListener('click', run);
+          // Changing a filter invalidates the table rather than silently leaving stale rows.
+          [id('region'), id('tf'), mode === 'patterns' ? id('pattern') : id('type')].forEach(sel =>
+            sel.addEventListener('change', () => {
+              id('body').innerHTML = '';
+              id('skipped').innerHTML = '';
+              id('meta').textContent = 'Filters changed — press Scan.';
+            }));
+        }
+      },
+      stop() {},
+    };
+  }
+
   // ---------- Cached Data ----------
   // Entirely local: answers "does analysing this cost a request?" without contacting any
   // provider, which is the point — you check before you spend.
@@ -962,6 +1059,8 @@ async function switchSymbol(sym) {
     patterns: makePatterns(),
     vcp: makeVCP(),
     elliott: makeElliott(),
+    brk: makeBreakouts('brk', 'patterns'),
+    brk2: makeBreakouts('brk2', 'methods'),
     cache: makeCache(),
     tpo: makeTPO('tpo', '/api/tpo/scan'),
     'tpo-usa': makeTPO('utpo', '/api/tpo/scan/usa'),

@@ -130,6 +130,10 @@ footer{color:var(--mut);font-size:11px;text-align:center;padding:14px}
 .st-TARGET{background:#122a2a;color:#3fb6a8}
 .st-INVALID{background:#2a1716;color:var(--red)}
 .st-EXPIRED{background:#20242c;color:var(--mut)}
+/* Breakout tabs: readiness reuses the same badge palette as the TPO state column. */
+.st.good{background:#10261f;color:var(--grn)}
+.st.warn{background:#2a2410;color:var(--amb)}
+.st:not(.good):not(.warn):not([class*="st-"]){background:#20242c;color:var(--mut)}
 .ttime{color:var(--mut);font-size:10px;margin-top:2px}
 .ezone{color:var(--mut);font-size:10px;font-weight:400;margin-top:2px;white-space:nowrap}
 .capped{color:var(--amb);cursor:help}
