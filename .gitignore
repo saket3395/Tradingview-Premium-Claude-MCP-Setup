@@ -10,6 +10,9 @@ data/upstox_token.json
 certs/
 
 # Local editor / preview launch config (machine-specific paths)
-.claude/
+.claude/*
+# ...but keep the committed codebase map (codebase-mapper output)
+!.claude/.codebase-info/
+!.claude/.codebase-info/**
 data/journal.backup-*.json
 data/history_cache.json
