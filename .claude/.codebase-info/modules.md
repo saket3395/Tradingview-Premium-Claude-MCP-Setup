@@ -1,6 +1,6 @@
 # Modules (`lib/`)
 
-*Last Updated: 2026-08-14*
+*Last Updated: 2026-08-18*
 
 Every module is an ES module exporting named functions. I/O is isolated to the provider modules
 (`tv`, `history`, `upstox`, `tpo`, `rs`, `backtest`, `analytics`); the rest are pure over data
@@ -63,8 +63,10 @@ Depends on: `lib/upstox.mjs` (instrument key), `lib/ratelimit.mjs`.
 *total* machine request rate — so `history`, `backtest`, `analytics`, and `upstox` must share one
 limiter. A 429 **never retries in place**: it trips the breaker (`breakerState`, `resetBreaker`),
 and while open every call fails instantly with the remaining wait, sending no traffic. Limits are
-resolved lazily from env (`UPSTOX_CONCURRENCY/MIN_GAP_MS/MAX_PER_MIN`) because `.env` loads after
-imports. `providerStatus()` surfaces live pacing/breaker state to the Cached-Data tab.
+resolved lazily from env (`NSE_CONCURRENCY/MIN_GAP_MS/MAX_PER_MIN`, with the legacy
+`UPSTOX_CONCURRENCY/MIN_GAP_MS/MAX_PER_MIN` still honored) because `.env` loads after imports. The
+internal per-provider keys stay `Upstox`/`Alpaca`; `providerStatus()` maps them to neutral display
+labels (`NSE data`/`US data`) and surfaces live pacing/breaker state to the Cached-Data tab.
 
 ### `lib/indicators.mjs` — shared primitives (pure)
 `sma`, `atr`, `pivots`, `lineFit`, `zigzag`, `rsi`, `slopePct`, `volRatio`, `r2`, `clamp`,
