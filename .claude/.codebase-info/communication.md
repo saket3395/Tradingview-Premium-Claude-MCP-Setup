@@ -1,6 +1,6 @@
 # Communication — API & External Integrations
 
-*Last Updated: 2026-08-14*
+*Last Updated: 2026-08-18*
 
 ## Internal JSON API (`server/server.mjs` `routes`)
 
@@ -12,6 +12,7 @@ Engine-level failures degrade to `{ ok:false, error|reason }` (HTTP 200). Static
 |---|---|---|---|
 | `GET /api/status` | `cdpStatus()` | CDP up/down, app version, chart-tab count | CDP :9222 |
 | `GET /api/config` | reads `config/markets.json` | UI config | — |
+| `GET /api/setup` | `cdpStatus()` + env presence checks (`nseTokenConfigured()`, US keys) | Onboarding "Start Here" status: CDP liveness + whether the NSE/US data tokens are configured. Booleans only — never returns a secret. Response keys: `cdp`, `nse`, `us`, `port` | CDP :9222 |
 | `GET /api/snapshot` | `attachVisibleChart`+`readChart/Indicators/Watchlist`+`parseSignals` | Poll loop: live chart + signals + watchlist | CDP :9222 |
 | `POST /api/chart/symbol` | `setSymbol` | Best-effort switch active chart symbol | CDP :9222 |
 | `GET /api/tpo/scan` | `scanTPO(cfg.india,'india')` | India TPO Stage-1 scan | TV scanner |
@@ -52,15 +53,17 @@ via `.mcp.json`.
 - `api.upstox.com/v2/historical-candle/...` — NSE OHLC (`lib/history.mjs`), intraday 1-min for
   backtest (`lib/backtest.mjs`), NIFTY daily for HMM (`lib/analytics.mjs`).
 - `api.upstox.com/v2/market-quote/quotes` — real per-stock circuit at Confirm (`lib/upstox.mjs`).
-- **Auth:** token JSON at `UPSTOX_TOKEN_FILE` (Analytics token recommended — ~1yr, read-only, no
-  daily refresh). Absent/stale → circuit falls back to assumed band; history/backtest/analytics
-  return `no data` honestly. **All Upstox calls share ONE limiter + breaker** (`lib/ratelimit.mjs`)
-  because Cloudflare's `error code: 1015` is an IP-level, total-rate block.
+- **Auth:** token JSON at `NSE_DATA_TOKEN_FILE` (legacy `UPSTOX_TOKEN_FILE` still honored as a
+  fallback; a long-lived analytics token is recommended — ~1yr, read-only, no daily refresh).
+  Absent/stale → circuit falls back to assumed band; history/backtest/analytics return `no data`
+  honestly. **All Upstox calls share ONE limiter + breaker** (`lib/ratelimit.mjs`, internal key
+  `Upstox`) because Cloudflare's `error code: 1015` is an IP-level, total-rate block.
 
 ### 4. Alpaca — `data.alpaca.markets/v2/stocks/bars`
 US equity 4H/1D/1W/1M bars (`lib/history.mjs:302`). **Market-data only** — no trading endpoint.
-Auth via `ALPACA_KEY_ID`/`ALPACA_SECRET_KEY`; `ALPACA_FEED=iex` (free default) or `sip`. Absent →
-US symbols report "no history source".
+Auth via `US_DATA_KEY_ID`/`US_DATA_SECRET_KEY`; `US_DATA_FEED=iex` (free default) or `sip` (legacy
+`ALPACA_KEY_ID`/`ALPACA_SECRET_KEY`/`ALPACA_FEED` still honored as fallbacks). Absent → US symbols
+report "no history source".
 
 ## No events / queues / DB
 No message bus, no websocket server of its own, no datastore. "Persistence" is two local JSON files

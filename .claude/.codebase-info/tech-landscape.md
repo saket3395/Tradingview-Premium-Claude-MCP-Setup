@@ -1,6 +1,6 @@
 # Tech Landscape
 
-*Last Updated: 2026-08-14*
+*Last Updated: 2026-08-18*
 
 ## Languages & runtime
 - **JavaScript, ES modules** (`"type": "module"`), all engine/server files are `.mjs`.
@@ -29,14 +29,14 @@ No test runner, linter, or formatter config is present — conventions are by ex
 |---|---|
 | `package.json` | Scripts, Node engine, module type. No deps. |
 | `.mcp.json` | Wires `chrome-devtools-mcp` to CDP `http://127.0.0.1:9222` for Claude Code. |
-| `.env.example` | All tunables: `PORT`, `TV_CDP`, `TV_NO_ACTIVATE`, `UPSTOX_TOKEN_FILE`, `ALPACA_KEY_ID/SECRET/FEED`, `UPSTOX_MIN_GAP_MS`, `UPSTOX_MAX_PER_MIN` (also `UPSTOX_CONCURRENCY`, read in `lib/ratelimit.mjs`). |
+| `.env.example` | All tunables: `PORT`, `TV_CDP`, `TV_NO_ACTIVATE`, `NSE_DATA_TOKEN_FILE`, `US_DATA_KEY_ID/SECRET_KEY/FEED`, `NSE_MIN_GAP_MS`, `NSE_MAX_PER_MIN` (also `NSE_CONCURRENCY`, read in `lib/ratelimit.mjs`). Each reader falls back to the legacy `UPSTOX_*`/`ALPACA_*` names, so old `.env` files keep working. |
 | `config/markets.json` | India-intraday labels/exchanges/timeframes/checklist; `tpo` per-market thresholds; `breakouts` filters; `testing.gates` (PF/WR/RR/minN) and `backtestLimit`; `pollSeconds`. |
 | `.gitignore` | Ignores `node_modules/`, `.env`, `data/*` runtime files, `certs/`, and **`.claude/`** (see note). |
 
 ## Local state / runtime data (all gitignored)
 - `data/journal.json` — forward-test journal (frozen plans + resolved outcomes).
 - `data/history_cache.json` — persisted settled OHLC windows (survives restarts).
-- `data/upstox_token.json` — Upstox access-token JSON (path set by `UPSTOX_TOKEN_FILE`).
+- `data/nse_data_token.json` — NSE data-provider access-token JSON (path set by `NSE_DATA_TOKEN_FILE`; the legacy default `data/upstox_token.json` / `UPSTOX_TOKEN_FILE` still works). Both paths are gitignored.
 - `data/upstox_instruments.json` — cached NSE instrument map.
 - `certs/` — optional local mkcert TLS (`localhost+2.pem` / `-key.pem`) → server serves HTTPS if present.
 

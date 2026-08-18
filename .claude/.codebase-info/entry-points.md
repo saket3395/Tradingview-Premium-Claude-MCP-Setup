@@ -1,6 +1,6 @@
 # Entry Points
 
-*Last Updated: 2026-08-14*
+*Last Updated: 2026-08-18*
 
 ## 1. Dashboard server — `server/server.mjs`
 - Started by `npm start` / `npm run dev`. Bootstraps: `loadEnv('.env')` → optional TLS from
@@ -14,6 +14,10 @@
   `/api/config`, then polls `/api/snapshot` every ~7s (`config.pollSeconds`) while driving each
   tab's on-demand fetch. Tab controllers are wired at the bottom of `app.js`
   (`makeTPO('tpo','/api/tpo/scan')`, etc.).
+- The **default view is the "Start Here" onboarding tab** (`data-view="start"`, first in the nav;
+  `#view-dashboard` starts hidden). Its `makeStart()` controller fetches `GET /api/setup` once on
+  load (and on tab re-open) to render live setup-status tiles — CDP up/down plus whether the
+  optional NSE/US data tokens are configured. It reads the response's `nse`/`us` keys.
 
 ## 3. CLI — `lib/tv.mjs` (via `npm run tv -- <cmd>`)
 The CDP bridge is runnable directly. Subcommands (from the file header + README):
