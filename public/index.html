@@ -10,17 +10,18 @@
 <header>
   <div class="brand">TV × Claude <span>Intraday MCP</span></div>
   <nav class="tabs" id="tabs">
-    <button class="tab active" data-view="dashboard">Dashboard</button>
-    <button class="tab" data-view="tpo">India TPO Scanner</button>
-    <button class="tab" data-view="tpo-usa">USA TPO Scanner</button>
-    <button class="tab" data-view="patterns">Pattern Analysis</button>
-    <button class="tab" data-view="vcp">VCP Analysis</button>
-    <button class="tab" data-view="elliott">Elliott Wave</button>
-    <button class="tab" data-view="brk">Breakout-Patterns</button>
-    <button class="tab" data-view="brk2">VCP/Elliott-Breakout</button>
-    <button class="tab" data-view="cache">Cached Data</button>
-    <button class="tab" data-view="testing">Testing</button>
-    <button class="tab" data-view="analytics">Analytics</button>
+    <button class="tab active" data-view="start" title="New here? What this dashboard is, what each tab does, and what you need to set up.">Start Here</button>
+    <button class="tab" data-view="dashboard" title="Live intraday read of one symbol from your active TradingView chart (bias, trend, volume, entry readiness).">Dashboard</button>
+    <button class="tab" data-view="tpo" title="Auto-scans the whole NSE for intraday setups, each with a fixed entry / stop / target and a state that tells you when to act.">India TPO Scanner</button>
+    <button class="tab" data-view="tpo-usa" title="Same intraday setup scanner for US stocks (NASDAQ/NYSE/AMEX), no circuit clamp.">USA TPO Scanner</button>
+    <button class="tab" data-view="patterns" title="Top-down chart-pattern + trend-stage report for one symbol across Monthly → Weekly → Daily → 4H.">Pattern Analysis</button>
+    <button class="tab" data-view="vcp" title="Mark Minervini VCP/SEPA screen for one symbol: trend template, RS rating, tight base, and a pivot trade plan.">VCP Analysis</button>
+    <button class="tab" data-view="elliott" title="Elliott Wave count for one symbol with alternate counts and an explicit invalidation price.">Elliott Wave</button>
+    <button class="tab" data-view="brk" title="Ranks stocks across the market closest to breaking out of a chart pattern (long-only).">Breakout-Patterns</button>
+    <button class="tab" data-view="brk2" title="Same breakout idea scan, but the level is a Minervini VCP pivot or an Elliott wave level.">VCP/Elliott-Breakout</button>
+    <button class="tab" data-view="cache" title="Shows what price history is stored locally and whether analysing a symbol will cost an upstream request.">Cached Data</button>
+    <button class="tab" data-view="testing" title="Forward-test journal of every frozen plan, pass/fail gates, and an India 1-minute backtest.">Testing</button>
+    <button class="tab" data-view="analytics" title="Monte Carlo, market-regime (HMM) and robustness stats computed only from real journal outcomes.">Analytics</button>
   </nav>
   <div class="status" id="status">
     <span class="pill" id="pill-cdp">CDP …</span>
@@ -31,7 +32,111 @@
   </div>
 </header>
 
-<main id="view-dashboard">
+<!-- START HERE (onboarding / orientation) -->
+<main id="view-start">
+  <!-- What this is -->
+  <section class="card span2" id="start-intro">
+    <h2>Start Here <small>· what this dashboard is, and where to begin</small></h2>
+    <p class="start-lede">This is a <b>local, analysis-only</b> dashboard for your own logged-in
+      <b>TradingView Desktop</b>. It reads your charts and public market data, then turns them into
+      intraday signals, structural analysis and breakout ideas for <b>🇮🇳 NSE India</b> and
+      <b>🇺🇸 US</b> stocks. Everything runs on your machine — there is no account, no cloud, and no build step.</p>
+    <div class="start-rules">
+      <div class="start-rule"><span class="start-rule-k">Rule 1 — it never places trades.</span>
+        There is <b>no order-execution code anywhere</b> in this project. Every number here is for your own decision.</div>
+      <div class="start-rule"><span class="start-rule-k">Rule 2 — it never makes data up.</span>
+        If a data source is missing, a panel says <b>“no data”</b> rather than guessing. So an empty
+        table is an honest answer, not a bug.</div>
+    </div>
+    <p class="start-lede start-disc"><b>Not financial advice.</b> Signals, states, backtests and analytics
+      are educational analysis only — never a recommendation to buy or sell. Trading involves substantial risk of loss.</p>
+  </section>
+
+  <!-- Setup status (live) -->
+  <section class="card span2" id="start-setup-card">
+    <h2>Your setup status <small>· checked live · nothing here is stored or sent anywhere</small></h2>
+    <div class="decision" id="start-setup"></div>
+    <div class="hint" id="start-setup-hint">Checking…</div>
+  </section>
+
+  <!-- What each tab does -->
+  <section class="card span2" id="start-map-card">
+    <h2>What each tab does <small>· grouped by what it gives you</small></h2>
+    <p class="start-lede">Three kinds of output, kept separate on purpose:
+      <span class="cat cat-signal">Live signal</span> = what is happening on a chart right now ·
+      <span class="cat cat-analysis">Analysis</span> = a structural read you request for one symbol ·
+      <span class="cat cat-idea">Idea scan</span> = a ranked shortlist across the whole market ·
+      <span class="cat cat-test">Journal &amp; stats</span> = how the signals actually did.
+      None of these is an instruction to trade — they are inputs you still judge yourself.</p>
+    <div class="tpo-tablewrap">
+      <table class="tpo-table" id="start-map">
+        <thead><tr><th>Tab</th><th>Kind</th><th>What it does, in plain English</th><th>Needs</th></tr></thead>
+        <tbody>
+          <tr><td class="sym">Dashboard</td><td><span class="cat cat-signal">Live signal</span></td>
+            <td>Load one symbol and get a live intraday read of it — market bias, trend, volume, risk and an <b>entry-readiness</b> verdict — from the indicators already on your TradingView chart.</td>
+            <td><span class="need need-tv">TradingView running</span></td></tr>
+          <tr><td class="sym">India TPO Scanner</td><td><span class="cat cat-signal">Live signal</span></td>
+            <td>Auto-scans the entire NSE for high-quality intraday setups. Each gives a <b>fixed entry, stop and target</b> that don’t drift, plus a <b>State</b> (ARMED / VALID / EXTENDED…) telling you when — or whether — to act. <b>Confirm</b> pulls the real circuit limits.</td>
+            <td><span class="need need-none">No keys</span> · <span class="need need-up">NSE data for Confirm</span></td></tr>
+          <tr><td class="sym">USA TPO Scanner</td><td><span class="cat cat-signal">Live signal</span></td>
+            <td>The same intraday setup scanner for US stocks (NASDAQ / NYSE / AMEX).</td>
+            <td><span class="need need-none">No keys</span></td></tr>
+          <tr><td class="sym">Pattern Analysis</td><td><span class="cat cat-analysis">Analysis</span></td>
+            <td>A top-down chart-pattern and trend-<b>stage</b> report for one symbol across Monthly → Weekly → Daily → 4H, with support/resistance confluence. You choose the symbol.</td>
+            <td><span class="need need-up">NSE data</span> · <span class="need need-al">US data</span></td></tr>
+          <tr><td class="sym">VCP Analysis</td><td><span class="cat cat-analysis">Analysis</span></td>
+            <td>Mark Minervini’s VCP / SEPA screen for one symbol: the 8-point trend template, a true percentile RS rating, a volatility-contraction base, and a pivot-based trade plan.</td>
+            <td><span class="need need-up">NSE data</span> · <span class="need need-al">US data</span></td></tr>
+          <tr><td class="sym">Elliott Wave</td><td><span class="cat cat-analysis">Analysis</span></td>
+            <td>A rule-valid Elliott Wave count for one symbol, always with <b>alternate counts</b> and an explicit <b>invalidation price</b> — because a wave count is an interpretation, not a fact.</td>
+            <td><span class="need need-up">NSE data</span> · <span class="need need-al">US data</span></td></tr>
+          <tr><td class="sym">Breakout-Patterns</td><td><span class="cat cat-idea">Idea scan</span></td>
+            <td>Ranks stocks across the whole market that are <b>closest to breaking out</b> of a chart pattern (long-only). Filter by region, timeframe and pattern.</td>
+            <td><span class="need need-up">NSE data</span> · <span class="need need-al">US data</span></td></tr>
+          <tr><td class="sym">VCP/Elliott-Breakout</td><td><span class="cat cat-idea">Idea scan</span></td>
+            <td>The same breakout shortlist, but the level to clear is a <b>Minervini VCP pivot</b> or an <b>Elliott wave</b> level, each with its stop / invalidation.</td>
+            <td><span class="need need-up">NSE data</span> · <span class="need need-al">US data</span></td></tr>
+          <tr><td class="sym">Cached Data</td><td><span class="cat cat-test">Utility</span></td>
+            <td>Shows what price history is stored locally and, before you analyse a symbol, whether doing so will <b>cost an upstream request</b>. Answers entirely from local state.</td>
+            <td><span class="need need-none">No keys</span></td></tr>
+          <tr><td class="sym">Testing</td><td><span class="cat cat-test">Journal &amp; stats</span></td>
+            <td>A forward-test <b>journal</b> of every plan the scanners froze, scored against pass/fail gates, plus an India 1-minute backtest — so you can see how the signals actually performed, not just how they looked.</td>
+            <td><span class="need need-none">No keys</span> · <span class="need need-up">NSE data for backtest</span></td></tr>
+          <tr><td class="sym">Analytics</td><td><span class="cat cat-test">Journal &amp; stats</span></td>
+            <td>Monte Carlo outcome bands, a market-regime model and robustness stats — all computed from your <b>real journal outcomes</b>, never from simulated prices.</td>
+            <td><span class="need need-none">No keys</span> · <span class="need need-up">NSE data for regime</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- First steps + glossary -->
+  <section class="card" id="start-steps-card">
+    <h2>First 5 minutes</h2>
+    <ol class="start-steps">
+      <li>In a terminal: <code>npm run tv:debug</code> — relaunches TradingView so the dashboard can read it, then <code>npm start</code>.</li>
+      <li>Open <code>http://localhost:4178</code> and keep a TradingView <b>chart tab active</b> (a second monitor is ideal).</li>
+      <li>Check <b>Your setup status</b> above — green means ready. The NSE and US data providers are optional and only unlock the tabs marked with them.</li>
+      <li>Go to <b>Dashboard</b>, type a symbol (e.g. <code>RELIANCE</code> or <code>AAPL</code>) and press <b>Load</b> for a live read.</li>
+      <li>Then try <b>India TPO Scanner</b> for auto-found intraday setups — it needs no API keys.</li>
+    </ol>
+    <p class="start-lede start-disc">Every tab has its own <b>“How it works”</b> panel — open it for the full method and honest caveats.</p>
+  </section>
+
+  <section class="card" id="start-gloss-card">
+    <h2>Words you’ll see</h2>
+    <dl class="start-gloss">
+      <dt>TPO</dt><dd>Time-Price-Opportunity — a Market-Profile idea about where price spent time. Here it informs the intraday setup score.</dd>
+      <dt>Signal State</dt><dd>VALID = act now · ARMED = wait for the level · EXTENDED = ran too far, don’t chase · INVALID = stop hit · EXPIRED = session over.</dd>
+      <dt>R:R</dt><dd>Reward-to-risk — how much you aim to make versus what you risk if the stop is hit. 1:2 means risk 1 to make 2.</dd>
+      <dt>VCP / SEPA</dt><dd>Volatility Contraction Pattern / Mark Minervini’s stock-selection method — a tightening base before a breakout.</dd>
+      <dt>Weinstein stage</dt><dd>Stan Weinstein’s 4 stages: 1 basing · 2 advancing · 3 topping · 4 declining.</dd>
+      <dt>EQ</dt><dd>Entry Quality (0–100) — how chaseable a setup is right now (penalises extension and late-day entries).</dd>
+    </dl>
+  </section>
+</main>
+
+<main id="view-dashboard" class="hidden">
   <!-- SIGNAL SUMMARY (active chart) -->
   <section class="card span2" id="signal-card">
     <h2>Signal Summary <small>· active chart · intraday decision metrics</small></h2>
@@ -129,7 +234,7 @@
         <code>config/markets.json → tpo.india</code>.</p>
         <p><b>Stage 2 — confirm (on demand).</b> <b>Confirm</b> loads the symbol on your active TradingView
         chart to read <b>live OHLC</b> and any Volume/Market-Profile study, and fetches the stock's
-        <b>real NSE upper/lower circuit from Upstox</b> to validate the targets/SL.</p>
+        <b>real NSE upper/lower circuit from the NSE data provider</b> to validate the targets/SL.</p>
         <p class="tpo-how-note"><b>Honest caveats:</b> the scanner's “VWAP” field is the pivot
         <code>(H+L+C)/3</code> (labeled <b>Pivot</b>, used for scoring only — never for entry). Full
         letter-by-letter TPO needs intraday time-at-price and isn’t computable for the whole universe from
@@ -157,7 +262,7 @@
         <code>noNewEntryBeforeCloseMin</code> minutes (default 45) and everything expires at the close.</p>
         <p><b>SL placement.</b> Fixed at the tighter of the day extreme or a 1-ATR stop beyond the anchor,
         then <b>clamped to the NSE lower circuit</b> (Stage-1 uses an assumed band; Confirm swaps in the real
-        circuit from Upstox). Never widen the stop; if hit, the setup is invalid.</p>
+        circuit from the NSE data provider). Never widen the stop; if hit, the setup is invalid.</p>
         <p><b>Target logic.</b> Two range-extension objectives projected beyond the session extreme, <b>capped
         at the NSE upper circuit</b> (targets can never sit past the circuit; R:R is recomputed if capped).</p>
         <p><b>Risk management.</b> Risk a fixed % of capital per trade (size = risk-₹ ÷ |entry−SL|). Book or
@@ -283,8 +388,8 @@
       <summary>How this analysis works</summary>
       <div class="tpo-how-body">
         <p><b>Top-down, not single-chart.</b> The symbol is analysed on <b>Monthly → Weekly → Daily → 4H</b>
-        from <b>real OHLC history</b> (NSE via Upstox — 4H aggregated from 30-minute candles anchored to the
-        09:15 session; US via Alpaca). Higher timeframes set the primary trend, the Daily gives the setup, the
+        from <b>real OHLC history</b> (NSE via the NSE data provider — 4H aggregated from 30-minute candles anchored to the
+        09:15 session; US via the US data provider). Higher timeframes set the primary trend, the Daily gives the setup, the
         4H gives the trigger. A timeframe with no data is reported as <b>missing</b>, never guessed.</p>
         <p><b>Stage Analysis (Weinstein).</b> Each timeframe is classified <b>Stage 1 Basing / 2 Advancing /
         3 Topping / 4 Declining</b> from the 30-period MA: its slope decides advancing vs declining, and the
@@ -517,7 +622,7 @@
         <b>within 15% of their 52-week high</b>, then ranks them by how close they are, their momentum and their
         relative volume. <b>Stage 2</b> fetches <b>real 4H/Daily/Weekly/Monthly OHLC</b> for the top candidates
         and runs the <b>same detectors as the Pattern Analysis tab</b> — nothing here is approximated.</p>
-        <p><b>Why the shortlist is small.</b> A fresh NSE symbol costs up to five Upstox requests and Upstox's
+        <p><b>Why the shortlist is small.</b> A fresh NSE symbol costs up to five NSE-provider requests and that provider's
         Cloudflare block trips well below the documented quota. <code>breakouts.candidates</code> (default 10)
         caps the deep pass, it runs sequentially through the shared rate limiter, and if the limiter trips
         mid-scan the scan <b>stops and says so</b> rather than presenting a partial result as complete. Results
@@ -624,7 +729,7 @@
     <details class="tpo-how" id="cache-how">
       <summary>Why this tab exists</summary>
       <div class="tpo-how-body">
-        <p><b>Upstox sits behind Cloudflare</b>, whose IP-level block (<code>error code 1015</code>) trips well
+        <p><b>The NSE data provider sits behind Cloudflare</b>, whose IP-level block (<code>error code 1015</code>) trips well
         below the documented API quota and lasts minutes. Analysing a <b>new</b> NSE symbol costs up to
         <b>5 requests</b> (30-minute, day, week, month, and today's intraday), so a handful of unfamiliar
         symbols in quick succession is what actually triggers it.</p>
@@ -636,7 +741,7 @@
         yesterday is free the next morning. Weekly and monthly are held for 30 days because their recent
         periods are <b>rebuilt exactly from daily</b> (verified at 0.0000% error), so they never go stale.</p>
         <p class="tpo-how-note">The cache lives in <code>data/history_cache.json</code> and survives restarts.
-        Pacing is set by <code>UPSTOX_MIN_GAP_MS</code> / <code>UPSTOX_MAX_PER_MIN</code> in <code>.env</code>
+        Pacing is set by the request-pacing keys in <code>.env</code> (see <code>.env.example</code>)
         and is shown below, so you can confirm what the server is really using.</p>
       </div>
     </details>
@@ -669,8 +774,8 @@
         gates show pass/fail — until then they read <i>insufficient sample</i>, honestly.</p>
         <p><b>India 1-minute backtest.</b> The button below replays the <b>most recent journaled India plans</b>
         (<code>testing.backtestLimit</code>, default 100) against real
-        <b>Upstox 1-minute historical candles</b> — exact fills, stop-outs and targets (conservative: if one
-        candle touches both stop and target it counts as a loss). <b>Each plan costs one Upstox request</b>, so the
+        <b>the NSE data provider's 1-minute historical candles</b> — exact fills, stop-outs and targets (conservative: if one
+        candle touches both stop and target it counts as a loss). <b>Each plan costs one NSE-provider request</b>, so the
         run is deliberately bounded and rate-limited: an unbounded replay of the whole journal was both a
         multi-minute request the browser would abandon and the single largest source of upstream load. Raise the
         limit in <code>config/markets.json</code> if you want a wider sample. USA stays forward-test only — there is
@@ -679,7 +784,7 @@
     </details>
     <div class="tpo-toolbar">
       <button id="test-refresh" class="btn-confirm">Refresh</button>
-      <button id="test-backtest" class="btn-confirm" title="Replays the most recent plans (config: testing.backtestLimit). Each plan costs one Upstox request, so the run is bounded and rate-limited.">Run India 1-min backtest <small>(recent 100)</small></button>
+      <button id="test-backtest" class="btn-confirm" title="Replays the most recent plans (config: testing.backtestLimit). Each plan costs one NSE-provider request, so the run is bounded and rate-limited.">Run India 1-min backtest <small>(recent 100)</small></button>
       <span class="pill" id="test-updated">—</span>
     </div>
     <div class="tpo-meta" id="test-gates"></div>
@@ -711,7 +816,7 @@
     <h2>Monte Carlo <small>· 5,000 bootstrap resamples of realized R-multiples</small></h2>
     <div class="decision" id="ana-mc-tiles"></div>
     <div id="ana-mc-chart"></div>
-    <h2 style="margin-top:14px">Market regime — Hidden Markov Model <small>· Gaussian HMM on NIFTY daily returns (Upstox)</small></h2>
+    <h2 style="margin-top:14px">Market regime — Hidden Markov Model <small>· Gaussian HMM on NIFTY daily returns (NSE data provider)</small></h2>
     <div class="decision" id="ana-hmm-tiles"></div>
     <div class="tpo-tablewrap"><table class="tpo-table" id="ana-hmm-table"></table></div>
     <h2 style="margin-top:14px">Robustness <small>· expectancy stability &amp; threshold sensitivity</small></h2>

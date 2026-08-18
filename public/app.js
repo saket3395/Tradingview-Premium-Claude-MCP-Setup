@@ -152,7 +152,7 @@ async function switchSymbol(sym) {
 
 // ---------- tabs + TPO scanners (India + USA share one implementation) ----------
 (function wireTabsAndTPO() {
-  const views = { dashboard: $('#view-dashboard'), tpo: $('#view-tpo'), 'tpo-usa': $('#view-tpo-usa'),
+  const views = { start: $('#view-start'), dashboard: $('#view-dashboard'), tpo: $('#view-tpo'), 'tpo-usa': $('#view-tpo-usa'),
     patterns: $('#view-patterns'), vcp: $('#view-vcp'), elliott: $('#view-elliott'),
     brk: $('#view-brk'), brk2: $('#view-brk2'), cache: $('#view-cache'),
     testing: $('#view-testing'), analytics: $('#view-analytics') };
@@ -262,7 +262,7 @@ async function switchSymbol(sym) {
       if (r.circuit) {
         if (r.circuit.ok) {
           const a = r.adjusted;
-          circ = `<div class="circ ok"><b>Real NSE circuit (Upstox):</b> lower ${r.circuit.lower} · upper ${r.circuit.upper}`
+          circ = `<div class="circ ok"><b>Real NSE circuit (NSE data provider):</b> lower ${r.circuit.lower} · upper ${r.circuit.upper}`
             + (a ? ` → validated plan: entry ${a.entry} · SL ${a.sl} · targets ${a.targets.join(' / ')} · R:R ${a.rr}${a.capped ? ' <span class="capped">⛒ capped to circuit</span>' : ' (within circuit)'}` : '')
             + `</div>`;
         } else {
@@ -341,7 +341,7 @@ async function switchSymbol(sym) {
     async function backtest(btn) {
       btn.disabled = true; btn.textContent = 'Backtesting… (1-min candles)';
       const box = $('#test-bt'); box.classList.remove('hidden');
-      box.innerHTML = '<h3>Running India 1-minute backtest…</h3><div class="prow">Replaying the most recent plans, one Upstox request each, paced to stay under the rate limit.</div>';
+      box.innerHTML = '<h3>Running India 1-minute backtest…</h3><div class="prow">Replaying the most recent plans, one NSE-provider request each, paced to stay under the rate limit.</div>';
       let r; try { r = await api('/api/test/backtest', { method: 'POST' }); } catch (e) { r = { ok: false, error: e.message }; }
       btn.disabled = false; btn.textContent = 'Run India 1-min backtest';
       if (!r.ok) { box.innerHTML = `<h3>Backtest unavailable</h3><div class="prow">${r.error}</div>`; return; }
@@ -1050,12 +1050,45 @@ async function switchSymbol(sym) {
       });
       $('#dash-state').textContent = r?.ok ? 'showing ' + sym : 'chart switch failed — ' + (r?.error || 'bring a chart tab to the front');
     } catch (e) { $('#dash-state').textContent = 'chart switch failed — ' + e.message; }
-    poll();                       // refresh the panel immediately, no Upstox involved
+    poll();                       // refresh the panel immediately, no data-provider request involved
   }
   dashCombo.wire();
   $('#dash-load').addEventListener('click', () => { dashCombo.close(); loadDashSymbol(); });
 
+  // Start Here — reads /api/setup and renders live "what's configured" tiles.
+  function makeStart() {
+    const tile = (k, v, cls, sub) => {
+      const t = el('div', 'dtile' + (cls ? ' ' + cls : ''));
+      t.append(el('div', 'dk', k), el('div', 'dv', v));
+      if (sub) t.append(el('div', 'start-sub', sub));
+      return t;
+    };
+    async function render() {
+      const box = $('#start-setup'), hint = $('#start-setup-hint');
+      if (!box) return;
+      let s; try { s = await api('/api/setup'); } catch { s = null; }
+      box.innerHTML = '';
+      if (!s) { hint.textContent = 'Could not read setup status — is the dashboard server running?'; return; }
+      const cdp = s.cdp || {}, up = s.nse || {}, al = s.us || {};
+      box.append(tile('TradingView (CDP)',
+        cdp.up ? 'Connected' : 'Not connected', cdp.up ? 'good' : 'bad',
+        cdp.up ? `${cdp.chartTabs || 0} chart tab(s) open · live chart reads work`
+               : 'Run  npm run tv:debug  to relaunch TradingView with CDP on :9222'));
+      box.append(tile('NSE data token · India (optional)',
+        up.configured ? 'Configured' : 'Not set', up.configured ? 'good' : 'warn',
+        up.configured ? 'Real NSE circuit at Confirm · NSE price history · 1-min backtest · regime model'
+               : 'Add an NSE data token in .env (see .env.example) to unlock NSE history + real circuits. Without it those panels say "no data" honestly.'));
+      box.append(tile('US data keys (optional)',
+        al.configured ? `Configured · ${al.feed} feed` : 'Not set', al.configured ? 'good' : 'warn',
+        al.configured ? 'US price history for the Pattern / VCP / Elliott / Breakout tabs'
+               : 'Add US data keys in .env (see .env.example) to analyse US symbols. Without them US analysis reports "no history source".'));
+      hint.textContent = 'Green = ready. Amber items are optional — they only affect the tabs that need them; the TPO scanners and journal work with no keys.';
+    }
+    return { start() { render(); }, stop() {} };
+  }
+
   const controllers = {
+    start: makeStart(),
     patterns: makePatterns(),
     vcp: makeVCP(),
     elliott: makeElliott(),
@@ -1074,4 +1107,6 @@ async function switchSymbol(sym) {
     Object.entries(controllers).forEach(([k, c]) => (k === view ? c.start() : c.stop()));
   }
   tabs.forEach(t => t.addEventListener('click', () => show(t.dataset.view)));
+  // Start Here is the default view (set in index.html) — render its live status once on load.
+  controllers.start.start();
 })();

@@ -51,6 +51,15 @@ function loadEnv(file) {
   }
 }
 
+// Is a usable NSE data token file present? Checks existence + a parseable access_token,
+// mirroring how lib/history.mjs / lib/upstox.mjs read it. Never throws, never returns the token.
+function nseTokenConfigured() {
+  // New generic name, with fallback to the legacy UPSTOX_TOKEN_FILE so existing .env files keep working.
+  const file = process.env.NSE_DATA_TOKEN_FILE || process.env.UPSTOX_TOKEN_FILE;
+  if (!file || !existsSync(file)) return false;
+  try { return !!JSON.parse(readFileSync(file, 'utf8')).access_token; } catch { return false; }
+}
+
 const send = (res, code, body, type = 'application/json') => {
   res.writeHead(code, { 'content-type': type, 'cache-control': 'no-store' });
   res.end(Buffer.isBuffer(body) || typeof body === 'string' ? body : JSON.stringify(body));
@@ -68,6 +77,21 @@ const routes = {
   'GET /api/status': async () => cdpStatus(),
 
   'GET /api/config': async () => json(await readFileP(join(ROOT, 'config', 'markets.json'), 'utf8')),
+
+  // Onboarding: report which optional data sources are configured, without ever
+  // exposing a secret. Booleans + CDP liveness only — powers the "Start Here" tab.
+  'GET /api/setup': async () => {
+    const cdp = await cdpStatus();
+    return {
+      port: PORT,
+      cdp: { up: cdp.up, endpoint: cdp.endpoint, app: cdp.app, chartTabs: cdp.chartTabs },
+      nse: { configured: nseTokenConfigured() },
+      us: {
+        configured: !!((process.env.US_DATA_KEY_ID || process.env.ALPACA_KEY_ID) && (process.env.US_DATA_SECRET_KEY || process.env.ALPACA_SECRET_KEY)),
+        feed: process.env.US_DATA_FEED || process.env.ALPACA_FEED || 'iex',
+      },
+    };
+  },
 
   // One consolidated read for the dashboard poll loop.
   'GET /api/snapshot': async () => {
