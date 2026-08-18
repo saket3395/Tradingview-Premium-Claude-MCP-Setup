@@ -194,16 +194,11 @@ footer{color:var(--mut);font-size:11px;text-align:center;padding:14px}
 .start-rule-k{display:block;color:var(--txt);font-weight:600;margin-bottom:2px}
 .dtile .start-sub{color:var(--mut);font-size:11px;line-height:1.45;margin-top:4px;font-weight:400}
 /* category + needs badges */
-.cat{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.3px;border-radius:5px;padding:2px 7px;white-space:nowrap;border:1px solid var(--line)}
-.cat-signal{color:var(--grn);border-color:#1f3b30;background:#10261f}
-.cat-analysis{color:var(--acc);border-color:#1e3050;background:#141c2c}
-.cat-idea{color:var(--amb);border-color:#3a3115;background:#201b0f}
-.cat-test{color:var(--mut);background:#0f141b}
+/* Category + needs badges are taxonomy, not market state — kept neutral per the
+   Meaning-Only Color Rule. Colour is reserved for market meaning and real readiness. */
+.cat{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.3px;border-radius:5px;padding:2px 7px;white-space:nowrap;border:1px solid var(--line);color:var(--mut);background:#0f141b}
 .need{display:inline-block;font-size:10px;border-radius:5px;padding:2px 7px;white-space:nowrap;border:1px solid var(--line);color:var(--mut);background:#0f141b}
-.need-none{color:var(--grn);border-color:#1f3b30}
-.need-tv{color:var(--acc);border-color:#1e3050}
-.need-up{color:var(--amb);border-color:#3a3115}
-.need-al{color:#c98bd6;border-color:#3a2440}
+.need-none{color:var(--grn);border-color:#1f3b30} /* "no setup required" — a genuine ready state */
 #start-map td{vertical-align:top}
 #start-map td:nth-child(2),#start-map td:nth-child(4){white-space:normal}
 .start-steps{margin:4px 0;padding-left:20px;color:var(--mut);font-size:13px;line-height:1.7}
@@ -211,3 +206,27 @@ footer{color:var(--mut);font-size:11px;text-align:center;padding:14px}
 .start-gloss{margin:2px 0}
 .start-gloss dt{color:var(--txt);font-weight:600;font-size:12px;margin-top:8px}
 .start-gloss dd{color:var(--mut);font-size:12px;line-height:1.5;margin:2px 0 0}
+
+/* ---- craft: browser surfaces, focus, motion (Honest Terminal) ---- */
+:root{color-scheme:dark;accent-color:var(--acc)}
+::selection{background:#1c2740;color:var(--txt)}
+.pat-input,input[type="text"],input:not([type]){caret-color:var(--acc)}
+
+/* thin dark scrollbars for the terminal's many scroll regions */
+*{scrollbar-width:thin;scrollbar-color:#2c343d transparent}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#2c343d;border:2px solid var(--bg);border-radius:999px}
+::-webkit-scrollbar-thumb:hover{background:#3a444f}
+
+/* visible keyboard focus everywhere; mouse users keep the quiet hover */
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.pat-input:focus-visible{outline:none} /* input keeps its border-shift focus treatment */
+
+/* one coherent, minimal motion vocabulary — 120ms, interruptible, off for reduced-motion */
+@media (prefers-reduced-motion: no-preference){
+  .tab,button,.btn-confirm,.chip,.pill{transition:border-color 120ms cubic-bezier(.4,0,.2,1),color 120ms cubic-bezier(.4,0,.2,1),background-color 120ms cubic-bezier(.4,0,.2,1)}
+  .tpo-table tbody tr,.tpo-table tr,.symlist li{transition:background-color 120ms cubic-bezier(.4,0,.2,1)}
+  .dtile,.pat-input{transition:border-color 120ms cubic-bezier(.4,0,.2,1)}
+  .tpo-how>summary{transition:color 120ms cubic-bezier(.4,0,.2,1)}
+}

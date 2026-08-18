@@ -1,0 +1,133 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-18T00:00:00Z",
+  "title": "Design System: TV × Claude Intraday MCP",
+  "extensions": {
+    "colorMeta": {
+      "terminal-ink": { "role": "neutral", "displayName": "Terminal Ink", "canonical": "#0e1117", "tonalRamp": ["#05070a", "#0a0d12", "#0e1117", "#161b22", "#20272f", "#2c343d", "#3a444f", "#5a6672"] },
+      "panel": { "role": "neutral", "displayName": "Panel", "canonical": "#161b22", "tonalRamp": ["#0a0d12", "#0e1117", "#12161d", "#161b22", "#1d232c", "#262d38", "#323b47", "#4a5561"] },
+      "inset": { "role": "neutral", "displayName": "Inset", "canonical": "#0f141b", "tonalRamp": ["#070a0e", "#0b0f15", "#0f141b", "#141a22", "#1b222c", "#242c37", "#303945", "#48525f"] },
+      "well": { "role": "neutral", "displayName": "Well", "canonical": "#0b0f15", "tonalRamp": ["#03050a", "#070a0f", "#0b0f15", "#10151c", "#171e26", "#212a34", "#2d3742", "#45505c"] },
+      "hairline": { "role": "neutral", "displayName": "Hairline", "canonical": "#272e3a", "tonalRamp": ["#12161d", "#1a1f28", "#222733", "#272e3a", "#333c4a", "#414c5c", "#525f70", "#6b7a8c"] },
+      "text": { "role": "neutral", "displayName": "Soft White", "canonical": "#d7dde6", "tonalRamp": ["#5a626e", "#727b88", "#8b97a7", "#a4aeba", "#bcc4ce", "#d7dde6", "#e6eaf0", "#f4f6f9"] },
+      "text-muted": { "role": "neutral", "displayName": "Slate Muted", "canonical": "#8b97a7", "tonalRamp": ["#3a4048", "#4c545e", "#5f6874", "#727c8a", "#8b97a7", "#a3adba", "#bcc4ce", "#d7dde6"] },
+      "bull": { "role": "secondary", "displayName": "Bull Green", "canonical": "#26a17b", "tonalRamp": ["#0a2a20", "#10261f", "#134231", "#1a7059", "#26a17b", "#3cc196", "#6fd4b5", "#a9e6d3"] },
+      "bear": { "role": "secondary", "displayName": "Bear Red", "canonical": "#e5534b", "tonalRamp": ["#2a1716", "#3b2422", "#5a2b28", "#a13b34", "#e5534b", "#ec726b", "#f39a95", "#f8c2bf"] },
+      "caution": { "role": "secondary", "displayName": "Caution Amber", "canonical": "#d9a441", "tonalRamp": ["#2a2410", "#3a3115", "#5a4a1c", "#a17d2c", "#d9a441", "#e3b866", "#edcf94", "#f5e3c2"] },
+      "interactive": { "role": "primary", "displayName": "Interactive Blue", "canonical": "#3b82f6", "tonalRamp": ["#141c2c", "#1c2740", "#1e3050", "#2a5bc0", "#3b82f6", "#639bf8", "#93b8fa", "#c2d6fc"] },
+      "control": { "role": "neutral", "displayName": "Control Face", "canonical": "#1f2733", "tonalRamp": ["#0e131b", "#151b25", "#1f2733", "#28313f", "#333e4d", "#414d5e", "#556274", "#6e7d90"] }
+    },
+    "typographyMeta": {
+      "symbol": { "displayName": "Symbol", "purpose": "The active ticker read-out — the single largest element on screen." },
+      "title": { "displayName": "Title", "purpose": "Card and section headings, each trailed by a muted method sub-label." },
+      "body": { "displayName": "Body", "purpose": "Default reading text, disclosure prose, list items." },
+      "data": { "displayName": "Data", "purpose": "All prices/levels/ratios — tabular, non-jittering." },
+      "label": { "displayName": "Label / Overline", "purpose": "Uppercase micro-labels: tile keys, section eyebrows, badges." }
+    },
+    "shadows": [
+      { "name": "floating-overlay", "value": "0 10px 28px #0009", "purpose": "The only shadow in the system — reserved for the autocomplete dropdown and any UI that truly floats above the document." }
+    ],
+    "motion": [
+      { "name": "ease-standard", "value": "cubic-bezier(0.4, 0, 0.2, 1)", "purpose": "Standard easing for the few state transitions the terminal uses (border/opacity on hover, focus). Motion stays minimal by design." },
+      { "name": "duration-fast", "value": "120ms", "purpose": "Hover/focus border and opacity shifts. Instant enough to feel like hardware." }
+    ],
+    "breakpoints": [
+      { "name": "compact", "value": "480px" },
+      { "name": "single-column", "value": "820px" },
+      { "name": "container-max", "value": "1280px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button",
+      "description": "Default action button; the affordance is the edge, not a color wash.",
+      "html": "<button class=\"ds-btn\">Refresh now</button>",
+      "css": ".ds-btn { background: #1f2733; color: #d7dde6; border: 1px solid #272e3a; border-radius: 6px; padding: 5px 11px; font: 12px ui-sans-serif, system-ui, sans-serif; cursor: pointer; transition: border-color 120ms cubic-bezier(0.4,0,0.2,1); } .ds-btn:hover { border-color: #3b82f6; } .ds-btn:focus-visible { outline: 2px solid #3b82f6; outline-offset: 1px; } .ds-btn:disabled { opacity: 0.5; cursor: not-allowed; }"
+    },
+    {
+      "name": "Status Pill",
+      "kind": "chip",
+      "refersTo": "pill",
+      "description": "Live status chip; .ok/.bad follow the Meaning-Only color rule.",
+      "html": "<span class=\"ds-pill ds-pill-ok\">CDP up</span>",
+      "css": ".ds-pill { display: inline-block; background: #161b22; border: 1px solid #272e3a; border-radius: 999px; padding: 3px 9px; color: #8b97a7; font: 12px ui-sans-serif, system-ui, sans-serif; } .ds-pill-ok { color: #26a17b; border-color: #1f3b30; } .ds-pill-bad { color: #e5534b; border-color: #3b2422; }"
+    },
+    {
+      "name": "Nav Tab (active)",
+      "kind": "nav",
+      "refersTo": "tab-active",
+      "description": "Tab nav; active tab reads as a raised chip of the page surface.",
+      "html": "<div class=\"ds-tabs\"><button class=\"ds-tab ds-tab-active\">India TPO Scanner</button><button class=\"ds-tab\">USA TPO Scanner</button></div>",
+      "css": ".ds-tabs { display: flex; gap: 4px; } .ds-tab { background: transparent; border: 1px solid transparent; color: #8b97a7; border-radius: 6px; padding: 5px 12px; font: 12px ui-sans-serif, system-ui, sans-serif; cursor: pointer; transition: color 120ms; } .ds-tab:hover { color: #d7dde6; } .ds-tab-active { background: #161b22; border-color: #272e3a; color: #d7dde6; }"
+    },
+    {
+      "name": "Search Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Symbol combobox field; focus is a calm translucent-blue border, not a glow.",
+      "html": "<input class=\"ds-input\" placeholder=\"Search a symbol — e.g. RELIANCE, INFY, AAPL\" />",
+      "css": ".ds-input { background: #0f141b; border: 1px solid #272e3a; border-radius: 6px; color: #d7dde6; font: 13px ui-sans-serif, system-ui, sans-serif; padding: 5px 10px; min-width: 260px; } .ds-input::placeholder { color: #8b97a7; } .ds-input:focus { outline: none; border-color: rgba(76,141,255,0.47); }"
+    },
+    {
+      "name": "Decision Tile",
+      "kind": "card",
+      "refersTo": "decision-tile",
+      "description": "Instrument-cluster tile: uppercase key over a value, with good/bad/warn variants.",
+      "html": "<div class=\"ds-tile ds-tile-good\"><div class=\"ds-tile-k\">Market Bias</div><div class=\"ds-tile-v\">BULLISH</div></div>",
+      "css": ".ds-tile { background: #0f141b; border: 1px solid #272e3a; border-radius: 8px; padding: 7px 9px; min-width: 150px; font-family: ui-sans-serif, system-ui, sans-serif; } .ds-tile-k { color: #8b97a7; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 3px; } .ds-tile-v { font-size: 13px; font-weight: 600; color: #d7dde6; } .ds-tile-good { border-color: #1f3b30; } .ds-tile-good .ds-tile-v { color: #26a17b; } .ds-tile-bad { border-color: #3b2422; } .ds-tile-bad .ds-tile-v { color: #e5534b; } .ds-tile-warn { border-color: #3a3115; } .ds-tile-warn .ds-tile-v { color: #d9a441; }"
+    },
+    {
+      "name": "Signal State Badge",
+      "kind": "custom",
+      "refersTo": "state-valid",
+      "description": "Signature component: the plan's live state encoded as fill+text; the state is the instruction.",
+      "html": "<span class=\"ds-st ds-st-valid\">VALID</span> <span class=\"ds-st ds-st-armed\">ARMED</span> <span class=\"ds-st ds-st-ext\">EXTENDED</span> <span class=\"ds-st ds-st-invalid\">INVALID</span> <span class=\"ds-st ds-st-expired\">EXPIRED</span>",
+      "css": ".ds-st { padding: 2px 7px; border-radius: 6px; font: 700 11px ui-sans-serif, system-ui, sans-serif; white-space: nowrap; } .ds-st-valid { background: #10261f; color: #26a17b; } .ds-st-armed { background: #1c2740; color: #3b82f6; } .ds-st-ext { background: #2a2410; color: #d9a441; } .ds-st-invalid { background: #2a1716; color: #e5534b; } .ds-st-expired { background: #20242c; color: #8b97a7; }"
+    },
+    {
+      "name": "How-It-Works Disclosure",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "Signature component: methodology + honest caveat, one click away. The Analyst's Desk made literal.",
+      "html": "<details class=\"ds-how\" open><summary>How it works</summary><div class=\"ds-how-body\"><p>Stage 1 scans the whole NSE universe server-side and scores each name. Only high-quality setups are shown.</p><p class=\"ds-how-note\">Honest caveat: Stage 1 is profile-<em>informed</em> from day-level data; use Confirm for true on-chart levels.</p></div></details>",
+      "css": ".ds-how { border: 1px solid #272e3a; border-radius: 8px; background: #0f141b; font-family: ui-sans-serif, system-ui, sans-serif; } .ds-how > summary { cursor: pointer; padding: 8px 12px; font-weight: 600; font-size: 12px; color: #d7dde6; list-style: none; } .ds-how > summary::-webkit-details-marker { display: none; } .ds-how > summary::before { content: '▸ '; color: #8b97a7; } .ds-how[open] > summary::before { content: '▾ '; } .ds-how-body { padding: 2px 14px 12px; border-top: 1px solid #272e3a; } .ds-how-body p { margin: 8px 0; color: #8b97a7; font-size: 12px; line-height: 1.55; } .ds-how-note { border-top: 1px dashed #272e3a; padding-top: 8px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Honest Terminal",
+    "overview": "A professional-grade trading instrument that never lies. The surface is dark, dense, and information-first — the calm authority of a Bloomberg-class cockpit, where numbers are the hero and chrome gets out of the way. Every panel is a rectangle of near-black glass with a single hairline edge; the four signal colors flare only when the market means something. Tempering that terminal severity is the Analyst's Desk: the system shows its work — every analysis surface carries a 'How it works' disclosure, jargon has a glossary, and a missing data source renders an honest 'no data' rather than an invented number. Dense and legible to a newcomer at the same time.",
+    "keyCharacteristics": [
+      "Dark tonal terminal: four stacked greys carry all structure; four signal colors carry all meaning.",
+      "Hairline, not shadow — 1px borders define every surface; depth is tonal.",
+      "Tabular by nature — monospaced, right-aligned, tnum numerics that don't jitter as they tick.",
+      "Self-documenting — 'How it works' disclosures and honest empty states are first-class components.",
+      "High density, high legibility — a pro tool a newcomer can still read."
+    ],
+    "rules": [
+      { "name": "The Meaning-Only Color Rule", "body": "Green, red, amber and blue are reserved for market meaning — bullish, bearish, caution, interactive. If something is colored, it is because it carries state. Never use a signal color for decoration. The rarity is the point.", "section": "colors" },
+      { "name": "The Tonal Depth Rule", "body": "Surfaces get darker as they recede (terminal-ink → panel → inset → well). The greys and the hairline do the structural work, keeping the four signal colors rare and legible.", "section": "colors" },
+      { "name": "The Soft-White Rule", "body": "Primary text is #d7dde6, never #ffffff. Pure white on near-black vibrates; the off-white reads calmer over a long session.", "section": "colors" },
+      { "name": "The Tabular Numbers Rule", "body": "Every price, level, ratio and countdown uses tabular-nums or the mono data font. Digits align in tables and never shift width as a live value ticks.", "section": "typography" },
+      { "name": "The Method-in-the-Subhead Rule", "body": "A section title states what; its muted small sub-label states how. The method is always one glance away.", "section": "typography" },
+      { "name": "The Flat-By-Default Rule", "body": "Resting surfaces cast no shadow. A shadow is permitted only on UI that truly floats above the document. In the layout: a hairline, not a shadow.", "section": "elevation" },
+      { "name": "The Hairline Rule", "body": "One border weight system-wide: 1px, #272e3a. Structure is drawn with light, even lines — never with weight, color, or shadow.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep every color strictly semantic — green/red/amber = market state, blue = interactive.",
+      "Do render all numeric data with tabular-nums or the mono data font, so live values align and never jitter.",
+      "Do convey depth with the four-grey tonal stack + 1px hairlines; keep resting surfaces flat.",
+      "Do pair every analysis surface with a 'How it works' disclosure and an honest empty / 'no data' state.",
+      "Do right-align numeric table columns and left-align labels; keep tables horizontally scrollable rather than shrinking the type.",
+      "Do use soft off-white #d7dde6 for primary text, never pure white."
+    ],
+    "donts": [
+      "Don't introduce a decorative or brand accent color; there is no non-semantic hue in this system.",
+      "Don't put drop shadows on resting cards, tiles, or badges — shadow is reserved for truly floating overlays.",
+      "Don't fabricate numbers, states, testimonials, or performance to fill a panel — a truthful 'no data' is the correct design.",
+      "Don't let primary text or state colors fall below WCAG AA contrast on panel/terminal-ink.",
+      "Don't widen the container past ~1280px or trade the tabular density for marketing whitespace — this is an instrument, not a landing page."
+    ]
+  }
+}
