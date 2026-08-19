@@ -171,6 +171,13 @@ footer{color:var(--mut);font-size:11px;text-align:center;padding:14px}
 .eq{font-variant-numeric:tabular-nums;font-weight:600}
 .eq.good{color:var(--grn)} .eq.low{color:var(--red)}
 
+/* ---- pre-breakout lifecycle tier badge (Breakout tabs) ---- */
+.tier{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.3px;border-radius:5px;padding:2px 7px;white-space:nowrap;border:1px solid var(--line)}
+.tier-confirmed{background:#10261f;color:var(--grn);border-color:#1f3b30}
+.tier-pre{background:#1c2740;color:#4c8dff;border-color:#1e3050}
+.tier-watch{background:#20242c;color:var(--mut)}
+.tpo-table .why{color:var(--mut);font-size:10px;line-height:1.4;margin-top:3px;white-space:normal}
+
 /* ---- Pattern Analysis tab ---- */
 .pat-input{background:#0f141b;border:1px solid var(--line);border-radius:6px;color:var(--fg);
   font:inherit;font-size:13px;padding:5px 10px;min-width:260px;flex:0 1 320px}

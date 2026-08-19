@@ -991,7 +991,17 @@ async function switchSymbol(sym) {
   // nothing (no second two-stage provider scan). Readiness is shared; the last control
   // differs by engine (Status for chart patterns, Verdict for the methodology engines).
   function brkFilterControls(mode) {
-    const readiness = { key: 'ready', label: 'Readiness', type: 'select', test: F.eq('readiness'),
+    // Pre-breakout lifecycle tier. The strict rejects already keep the set small and clean,
+    // and rows are sorted best-tier-first, so the default shows all survivors (CONFIRMED →
+    // PRE-BREAKOUT → WATCH) rather than hiding the only candidate. "Ready" is one click away.
+    const tier = { key: 'tier', label: 'Tier', type: 'select',
+      test: (row, val) => val === 'all' ? true
+        : val === 'ready' ? (row.tier === 'CONFIRMED' || row.tier === 'PRE-BREAKOUT')
+        : row.tier === val,
+      options: [{ v: 'all', label: 'All tiers' }, { v: 'ready', label: 'Ready (pre + confirmed)' },
+        { v: 'CONFIRMED', label: 'Confirmed breakout' }, { v: 'PRE-BREAKOUT', label: 'High-confidence pre-breakout' },
+        { v: 'WATCH', label: 'Watch' }] };
+    const readiness = { key: 'ready', label: 'Distance', type: 'select', test: F.eq('readiness'),
       options: [{ v: 'all', label: 'All' }, { v: 'AT PIVOT', label: 'At pivot' }, { v: 'NEAR', label: 'Near' }, { v: 'APPROACHING', label: 'Approaching' }] };
     const symbol = { key: 'sym', label: 'Symbol', type: 'text', placeholder: 'contains…', test: F.has('symbol') };
     const last = mode === 'patterns'
@@ -1000,7 +1010,7 @@ async function switchSymbol(sym) {
       : { key: 'verdict', label: 'Verdict', type: 'select',
           test: (row, val) => val === 'all' ? true : val === 'ready' ? row.verdict === 'BUY-READY' : row.verdict !== 'BUY-READY',
           options: [{ v: 'all', label: 'All' }, { v: 'ready', label: 'BUY-READY' }, { v: 'other', label: 'Forming' }] };
-    return [symbol, readiness, last];
+    return [tier, symbol, readiness, last];
   }
 
   function makeBreakouts(prefix, mode) {
@@ -1009,8 +1019,18 @@ async function switchSymbol(sym) {
     const fmt = x => x == null ? '—' : x;
     const num = x => x == null ? '—' : (x > 0 ? '+' : '') + x;
     const rCls = r => r === 'AT PIVOT' ? 'good' : r === 'NEAR' ? 'warn' : '';
-    const cols = mode === 'patterns' ? 14 : 13;
+    const cols = mode === 'patterns' ? 15 : 14;
     let busy = false, filterBar = null, lastRows = [], lastThresholds = null;
+    // Pre-breakout lifecycle tier badge (colour carries the market meaning).
+    const tierCell = x => {
+      const t = x.tier;
+      const cls = t === 'CONFIRMED' ? 'tier-confirmed' : t === 'PRE-BREAKOUT' ? 'tier-pre' : 'tier-watch';
+      const label = t === 'CONFIRMED' ? 'CONFIRMED' : t === 'PRE-BREAKOUT' ? 'PRE-BREAKOUT' : t === 'WATCH' ? 'WATCH' : '—';
+      const title = x.readinessScore != null ? `breakout readiness ${x.readinessScore}/100` : '';
+      return `<td><span class="tier ${cls}" title="${title}">${label}</span></td>`;
+    };
+    const whyCell = x => `<td class="reason">${esc(x.detail)}${x.qualifyReasons?.length
+      ? `<div class="why">${x.qualifyReasons.map(esc).join(' · ')}</div>` : ''}</td>`;
 
     function query() {
       const p = new URLSearchParams({ region: id('region').value, tf: id('tf').value });
@@ -1042,6 +1062,10 @@ async function switchSymbol(sym) {
       tag('in uptrend near highs', r.prefiltered);
       tag('deep-analysed', `${r.analysed} / ${r.candidates}`);
       tag('candidates found', r.count, r.count ? 'status-live' : '');
+      const tc = r.tierCounts || {};
+      if (tc.CONFIRMED) tag('confirmed', tc.CONFIRMED, 'status-live');
+      if (tc['PRE-BREAKOUT']) tag('pre-breakout', tc['PRE-BREAKOUT'], 'status-live');
+      if (tc.WATCH) tag('watch', tc.WATCH);
       if (r.cached) tag('cache', '10-min result');
       if (r.stoppedEarly) meta.append(el('span', 'tag status-delayed', esc(r.stoppedEarly)));
 
@@ -1074,24 +1098,26 @@ async function switchSymbol(sym) {
           <td class="sym">${esc(x.symbol)}</td><td class="num">${fmt(x.price)}</td>
           <td><b>${esc(x.pattern)}</b></td><td>${esc(x.timeframe)}</td>
           <td class="${x.status === 'Confirmed' ? 'good' : 'warn'}"><b>${esc(x.status)}</b></td>
+          ${tierCell(x)}
           <td class="num"><b>${fmt(x.breakoutLevel)}</b><div class="ezone">${esc(x.levelLabel)}</div></td>
           <td class="num rr">${num(x.distPct)}%</td>
           <td><span class="st ${rCls(x.readiness)}">${esc(x.readiness)}</span></td>
           <td class="num">${x.confidence}%</td><td class="num"><b>${x.score}</b>/10</td>
           <td class="num">${fmt(x.target)}</td><td>${esc(x.stage)}</td><td class="num">${fmt(x.rvol)}</td>
-          <td class="reason">${esc(x.detail)}</td></tr>`).join('');
+          ${whyCell(x)}</tr>`).join('');
       } else {
         body.innerHTML = rows.map(x => `<tr>
           <td class="sym">${esc(x.symbol)}</td><td class="num">${fmt(x.price)}</td>
           <td><b>${esc(x.type)}</b></td><td>${esc(x.timeframe)}</td>
           <td class="${x.verdict === 'BUY-READY' ? 'good' : 'warn'}"><b>${esc(x.verdict)}</b></td>
+          ${tierCell(x)}
           <td class="num"><b>${fmt(x.breakoutLevel)}</b></td>
           <td class="num rr">${num(x.distPct)}%</td>
           <td><span class="st ${rCls(x.readiness)}">${esc(x.readiness)}</span></td>
           <td class="num">${fmt(x.invalidation)}</td>
           <td class="num">${x.targets?.length ? x.targets.join(' / ') : '—'}${x.rr ? ` <small>(${x.rr}R)</small>` : ''}</td>
           <td class="num">${fmt(x.confidence)}%</td><td class="num"><b>${fmt(x.score)}</b>/10</td>
-          <td class="reason">${esc(x.detail)}</td></tr>`).join('');
+          ${whyCell(x)}</tr>`).join('');
       }
     }
 
