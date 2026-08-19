@@ -3,6 +3,65 @@ const $ = s => document.querySelector(s);
 const el = (t, c, html) => { const e = document.createElement(t); if (c) e.className = c; if (html != null) e.innerHTML = html; return e; };
 const api = (p, opt) => fetch(p, opt).then(r => r.json());
 
+// ---------- reusable filter bar (one factory, every filterable tab reuses it) ----------
+// Client-side only: it narrows rows already fetched — never a re-scan, never a provider
+// request. `controls` is a declarative spec so no tab duplicates filter logic:
+//   { key, label, type:'select'|'text', options:[{v,label}], test(row,val), default, placeholder }
+// A select whose value is 'all' (or a text value of '') passes everything, so each `test`
+// only has to describe the narrowing case. Selections persist in localStorage under the
+// prefix so a filter survives an auto-refresh cycle and a page reload (intraday continuity).
+function makeFilterBar(prefix, controls, onChange) {
+  const KEY = 'fb:' + prefix;
+  const def = c => c.default != null ? c.default : (c.type === 'text' ? '' : 'all');
+  const saved = (() => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } })();
+  const state = {}; controls.forEach(c => { state[c.key] = saved[c.key] != null ? saved[c.key] : def(c); });
+  const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {} };
+
+  const wrap = el('div', 'filterbar');
+  const inputs = {};
+  controls.forEach(c => {
+    const lab = el('label', 'fpill');
+    lab.append(el('span', 'fk', c.label));
+    let input;
+    if (c.type === 'text') {
+      input = el('input'); input.type = 'search'; input.className = 'finput';
+      input.placeholder = c.placeholder || ''; input.spellcheck = false; input.autocomplete = 'off';
+      input.value = state[c.key];
+      input.addEventListener('input', () => { state[c.key] = input.value; persist(); onChange && onChange(); });
+    } else {
+      input = el('select');
+      c.options.forEach(o => { const op = el('option'); op.value = o.v; op.textContent = o.label; input.append(op); });
+      input.value = state[c.key];
+      input.addEventListener('change', () => { state[c.key] = input.value; persist(); onChange && onChange(); });
+    }
+    inputs[c.key] = input; lab.append(input); wrap.append(lab);
+  });
+  const count = el('span', 'fpill fcount');
+  const reset = el('button', 'fbtn', 'Reset');
+  reset.addEventListener('click', () => {
+    controls.forEach(c => { state[c.key] = def(c); inputs[c.key].value = state[c.key]; });
+    persist(); onChange && onChange();
+  });
+  wrap.append(el('span', 'grow'), count, reset);
+
+  return {
+    el: wrap,
+    matches(row) { return controls.every(c => c.test(row, state[c.key])); },
+    apply(rows) { return rows.filter(r => this.matches(r)); },
+    active() { return controls.some(c => state[c.key] !== def(c)); },
+    setCount(shown, total) {
+      count.textContent = (shown === total ? `${total}` : `${shown} of ${total}`) + ' shown';
+      count.classList.toggle('filtered', shown !== total);
+    },
+  };
+}
+// Common `test` builders so tabs stay declarative.
+const F = {
+  eq: field => (row, val) => val === 'all' || String(row[field] ?? '') === val,
+  min: field => (row, val) => val === 'any' || (row[field] != null && Number(row[field]) >= Number(val)),
+  has: field => (row, val) => !val || String(row[field] ?? '').toUpperCase().includes(val.trim().toUpperCase()),
+};
+
 let CONFIG = null, POLL_MS = 7000, timer = null;
 // Symbol under analysis, shared by the three analysis tabs so switching methodology keeps
 // you on the same name (and reuses the server-side history cache). Set only by you.
@@ -158,10 +217,29 @@ async function switchSymbol(sym) {
     testing: $('#view-testing'), analytics: $('#view-analytics') };
   const tabs = [...document.querySelectorAll('#tabs .tab')];
 
+  // One control-set, reused by both TPO scanners (India + USA) so the filter UX is identical.
+  function tpoFilterControls() {
+    return [
+      { key: 'sig', label: 'Signal', type: 'select', test: F.eq('signal'),
+        options: [{ v: 'all', label: 'All' }, { v: 'LONG', label: 'LONG' }, { v: 'SHORT', label: 'SHORT' }] },
+      { key: 'state', label: 'State', type: 'select',
+        test: (row, val) => val === 'all' ? true : val === 'valid' ? row.state === 'VALID' : (row.state === 'VALID' || row.state === 'ARMED'),
+        options: [{ v: 'all', label: 'All' }, { v: 'act', label: 'Actionable' }, { v: 'valid', label: 'VALID only' }] },
+      { key: 'setup', label: 'Setup', type: 'select', test: F.eq('setup'),
+        options: [{ v: 'all', label: 'All' }, { v: 'OPEN-DRIVE', label: 'Open-Drive' }, { v: 'IB-COIL', label: 'IB-Coil' }, { v: 'VALUE-EDGE', label: 'Value-Edge' }, { v: 'EXPANSION', label: 'Expansion' }] },
+      { key: 'eq', label: 'Min EQ', type: 'select', default: 'any', test: F.min('entryQuality'),
+        options: [{ v: 'any', label: 'Any' }, { v: '45', label: '≥45' }, { v: '65', label: '≥65' }] },
+      { key: 'rr', label: 'Min R:R', type: 'select', default: 'any', test: F.min('rr'),
+        options: [{ v: 'any', label: 'Any' }, { v: '1.5', label: '≥1.5' }, { v: '2', label: '≥2' }, { v: '3', label: '≥3' }] },
+      { key: 'sym', label: 'Symbol', type: 'text', placeholder: 'contains…', test: F.has('symbol') },
+    ];
+  }
+
   function makeTPO(prefix, endpoint) {
     const id = s => document.getElementById(prefix + '-' + s);
     let tpoMs = 30000, started = false, autoOn = true;
     let cycleTimer = null, tickTimer = null, nextAt = 0, scanning = false;
+    let filterBar = null, lastRows = [];
 
     id('auto').addEventListener('change', e => {
       autoOn = e.target.checked;
@@ -205,12 +283,29 @@ async function switchSymbol(sym) {
       tag('setups', r.count);
       if (r.session && r.session.minsToClose != null) tag('to close', r.session.minsToClose + 'm');
       tag('updated', new Date(r.ts).toLocaleTimeString());
-      body.innerHTML = '';
-      if (!r.rows.length) {
-        body.innerHTML = `<tr><td colspan="13" class="tpo-empty">No high-quality setups right now (or market closed). Thresholds live in config/markets.json → tpo.${r.market ? ' [' + r.market + ']' : ''}</td></tr>`;
-        note.textContent = r.note || ''; return;
+      lastRows = r.rows || [];
+      note.textContent = r.note || '';
+      paintRows();
+    }
+
+    // Split from scan() so the filter bar can repaint without a re-fetch: it narrows the
+    // frozen set that Stage 1 already returned — no provider request, entries never move.
+    function paintRows() {
+      const body = id('body');
+      const total = lastRows.length;
+      if (!total) {
+        if (filterBar) filterBar.setCount(0, 0);
+        body.innerHTML = `<tr><td colspan="13" class="tpo-empty">No high-quality setups right now (or market closed). Thresholds live in config/markets.json → tpo.</td></tr>`;
+        return;
       }
-      r.rows.forEach(x => {
+      const rows = filterBar ? filterBar.apply(lastRows) : lastRows;
+      if (filterBar) filterBar.setCount(rows.length, total);
+      if (!rows.length) {
+        body.innerHTML = `<tr><td colspan="13" class="tpo-empty">All ${total} setup(s) are hidden by your filters — press Reset to see them.</td></tr>`;
+        return;
+      }
+      body.innerHTML = '';
+      rows.forEach(x => {
         const tr = el('tr');
         const zone = Array.isArray(x.entryZone) ? `<div class="ezone">zone ${x.entryZone[0]}–${x.entryZone[1]}</div>` : '';
         const cap = x.circuit && x.circuit.capped ? ' <span class="capped" title="Target/SL clamped to circuit band">⛒</span>' : '';
@@ -232,7 +327,6 @@ async function switchSymbol(sym) {
         b.addEventListener('click', () => confirm(x, b));
         td.append(b); tr.append(td); body.append(tr);
       });
-      note.textContent = r.note || '';
     }
 
     async function confirm(x, btn) {
@@ -279,6 +373,7 @@ async function switchSymbol(sym) {
     return {
       async start() {
         if (started) return; started = true;
+        if (!filterBar) { filterBar = makeFilterBar(prefix, tpoFilterControls(), paintRows); id('filters').append(filterBar.el); }
         try {
           const c = await api('/api/config');
           if (c?.tpo?.refreshSeconds) { tpoMs = c.tpo.refreshSeconds * 1000; id('cycle').textContent = 'every ' + c.tpo.refreshSeconds + 's'; }
@@ -294,6 +389,20 @@ async function switchSymbol(sym) {
   // ---------- Testing tab (forward-test journal + India 1-min backtest) ----------
   function makeTesting() {
     const fmt = x => x == null ? '—' : x;
+    let filterBar = null, lastRecent = [];
+    function paintRecent() {
+      const rows = filterBar ? filterBar.apply(lastRecent) : lastRecent;
+      if (filterBar) filterBar.setCount(rows.length, lastRecent.length);
+      $('#test-body').innerHTML = rows.map(t => `
+        <tr><td>${t.date}</td><td>${t.market}</td><td class="sym">${t.symbol}</td>
+        <td><span class="setup setup-${t.setup}">${t.setup}</span></td>
+        <td><span class="sig ${t.signal}">${t.signal}</span></td>
+        <td class="num">${t.entry}</td><td class="num">${t.sl}</td><td class="num">${t.targets?.[0] ?? '—'}</td>
+        <td class="num">${t.rr}</td><td class="num">${fmt(t.entryQuality)}</td>
+        <td>${t.status}</td><td>${t.outcome || (t.status === 'MISSED' ? 'never filled' : '—')}</td>
+        <td class="num ${t.rMultiple > 0 ? 'rr' : ''}">${t.rMultiple != null ? (t.rMultiple > 0 ? '+' : '') + t.rMultiple : '—'}</td></tr>`).join('')
+        || `<tr><td colspan="13" class="tpo-empty">${lastRecent.length ? 'All ' + lastRecent.length + ' plan(s) are hidden by your filters — press Reset to see them.' : 'No journaled plans yet.'}</td></tr>`;
+    }
     const gateTag = (name, g) => {
       const cls = g.pass === true ? 'status-live' : g.pass === false ? 'status-delayed' : 'status-closed';
       const verdict = g.pass === true ? 'PASS' : g.pass === false ? 'FAIL' : 'n<20';
@@ -326,16 +435,9 @@ async function switchSymbol(sym) {
         : '';
       bd.innerHTML = section('By market', r.byMarket) + section('By setup', r.bySetup) + section('By confidence', r.byConfidence)
         || '<tr><td class="tpo-empty">Journal empty — plans record automatically while the TPO scanners run during market hours.</td></tr>';
-      // recent journal
-      $('#test-body').innerHTML = (r.recent || []).map(t => `
-        <tr><td>${t.date}</td><td>${t.market}</td><td class="sym">${t.symbol}</td>
-        <td><span class="setup setup-${t.setup}">${t.setup}</span></td>
-        <td><span class="sig ${t.signal}">${t.signal}</span></td>
-        <td class="num">${t.entry}</td><td class="num">${t.sl}</td><td class="num">${t.targets?.[0] ?? '—'}</td>
-        <td class="num">${t.rr}</td><td class="num">${fmt(t.entryQuality)}</td>
-        <td>${t.status}</td><td>${t.outcome || (t.status === 'MISSED' ? 'never filled' : '—')}</td>
-        <td class="num ${t.rMultiple > 0 ? 'rr' : ''}">${t.rMultiple != null ? (t.rMultiple > 0 ? '+' : '') + t.rMultiple : '—'}</td></tr>`).join('')
-        || '<tr><td colspan="13" class="tpo-empty">No journaled plans yet.</td></tr>';
+      // recent journal (filtered client-side; gates/summary/breakdown above are untouched)
+      lastRecent = r.recent || [];
+      paintRecent();
       $('#test-note').textContent = 'Only plans whose state reached VALID (a fillable entry) count toward PF / win-rate; the rest are “missed”. No mock data — everything above is recorded from live scans.';
     }
     async function backtest(btn) {
@@ -358,6 +460,20 @@ async function switchSymbol(sym) {
       start() {
         if (!wired) {
           wired = true;
+          filterBar = makeFilterBar('test', [
+            { key: 'market', label: 'Market', type: 'select', test: F.eq('market'),
+              options: [{ v: 'all', label: 'All' }, { v: 'india', label: 'India' }, { v: 'usa', label: 'USA' }] },
+            { key: 'setup', label: 'Setup', type: 'select', test: F.eq('setup'),
+              options: [{ v: 'all', label: 'All' }, { v: 'OPEN-DRIVE', label: 'Open-Drive' }, { v: 'IB-COIL', label: 'IB-Coil' }, { v: 'VALUE-EDGE', label: 'Value-Edge' }, { v: 'EXPANSION', label: 'Expansion' }] },
+            { key: 'outcome', label: 'Outcome', type: 'select',
+              test: (row, val) => val === 'all' ? true
+                : val === 'open' ? (!row.outcome && row.status !== 'MISSED')
+                : val === 'missed' ? row.status === 'MISSED'
+                : row.outcome === val,
+              options: [{ v: 'all', label: 'All' }, { v: 'WIN', label: 'Win' }, { v: 'LOSS', label: 'Loss' }, { v: 'SCRATCH', label: 'Scratch' }, { v: 'open', label: 'Open' }, { v: 'missed', label: 'Missed' }] },
+            { key: 'sym', label: 'Symbol', type: 'text', placeholder: 'contains…', test: F.has('symbol') },
+          ], paintRecent);
+          $('#test-filters').append(filterBar.el);
           $('#test-refresh').addEventListener('click', refresh);
           $('#test-backtest').addEventListener('click', e => backtest(e.target));
         }
@@ -871,6 +987,22 @@ async function switchSymbol(sym) {
   // Both tabs are one implementation over /api/breakouts; `mode` only decides which
   // engine the server runs and which columns the table renders. On demand only: the
   // deep pass costs provider requests, so nothing here polls.
+  // Client-side filters over the shortlist a scan already returned — narrowing costs
+  // nothing (no second two-stage provider scan). Readiness is shared; the last control
+  // differs by engine (Status for chart patterns, Verdict for the methodology engines).
+  function brkFilterControls(mode) {
+    const readiness = { key: 'ready', label: 'Readiness', type: 'select', test: F.eq('readiness'),
+      options: [{ v: 'all', label: 'All' }, { v: 'AT PIVOT', label: 'At pivot' }, { v: 'NEAR', label: 'Near' }, { v: 'APPROACHING', label: 'Approaching' }] };
+    const symbol = { key: 'sym', label: 'Symbol', type: 'text', placeholder: 'contains…', test: F.has('symbol') };
+    const last = mode === 'patterns'
+      ? { key: 'status', label: 'Status', type: 'select', test: F.eq('status'),
+          options: [{ v: 'all', label: 'All' }, { v: 'Confirmed', label: 'Confirmed' }, { v: 'Developing', label: 'Developing' }] }
+      : { key: 'verdict', label: 'Verdict', type: 'select',
+          test: (row, val) => val === 'all' ? true : val === 'ready' ? row.verdict === 'BUY-READY' : row.verdict !== 'BUY-READY',
+          options: [{ v: 'all', label: 'All' }, { v: 'ready', label: 'BUY-READY' }, { v: 'other', label: 'Forming' }] };
+    return [symbol, readiness, last];
+  }
+
   function makeBreakouts(prefix, mode) {
     const id = s => document.getElementById(prefix + '-' + s);
     const esc = s => String(s ?? '').replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m]));
@@ -878,7 +1010,7 @@ async function switchSymbol(sym) {
     const num = x => x == null ? '—' : (x > 0 ? '+' : '') + x;
     const rCls = r => r === 'AT PIVOT' ? 'good' : r === 'NEAR' ? 'warn' : '';
     const cols = mode === 'patterns' ? 14 : 13;
-    let busy = false;
+    let busy = false, filterBar = null, lastRows = [], lastThresholds = null;
 
     function query() {
       const p = new URLSearchParams({ region: id('region').value, tf: id('tf').value });
@@ -913,10 +1045,32 @@ async function switchSymbol(sym) {
       if (r.cached) tag('cache', '10-min result');
       if (r.stoppedEarly) meta.append(el('span', 'tag status-delayed', esc(r.stoppedEarly)));
 
-      if (!r.rows.length) {
-        body.innerHTML = `<tr><td colspan="${cols}" class="tpo-empty">Nothing within ${r.thresholds.maxDistPct}% of a breakout level in this selection — an empty table is an honest answer. Widen the timeframe or raise <code>breakouts.candidates</code> in config/markets.json.</td></tr>`;
-      } else if (mode === 'patterns') {
-        body.innerHTML = r.rows.map(x => `<tr>
+      lastRows = r.rows || [];
+      lastThresholds = r.thresholds;
+      paintRows();
+
+      id('skipped').innerHTML = r.skipped?.length
+        ? `<span class="tag">rejected in Stage 2 — ${r.skipped.map(esc).join(' · ')}</span>` : '';
+      id('note').textContent = r.note || '';
+    }
+
+    // Repaint the shortlist through the client filter without re-scanning.
+    function paintRows() {
+      const body = id('body');
+      const total = lastRows.length;
+      if (!total) {
+        if (filterBar) filterBar.setCount(0, 0);
+        body.innerHTML = `<tr><td colspan="${cols}" class="tpo-empty">Nothing within ${lastThresholds?.maxDistPct}% of a breakout level in this selection — an empty table is an honest answer. Widen the timeframe or raise <code>breakouts.candidates</code> in config/markets.json.</td></tr>`;
+        return;
+      }
+      const rows = filterBar ? filterBar.apply(lastRows) : lastRows;
+      if (filterBar) filterBar.setCount(rows.length, total);
+      if (!rows.length) {
+        body.innerHTML = `<tr><td colspan="${cols}" class="tpo-empty">All ${total} candidate(s) are hidden by your filters — press Reset to see them.</td></tr>`;
+        return;
+      }
+      if (mode === 'patterns') {
+        body.innerHTML = rows.map(x => `<tr>
           <td class="sym">${esc(x.symbol)}</td><td class="num">${fmt(x.price)}</td>
           <td><b>${esc(x.pattern)}</b></td><td>${esc(x.timeframe)}</td>
           <td class="${x.status === 'Confirmed' ? 'good' : 'warn'}"><b>${esc(x.status)}</b></td>
@@ -927,7 +1081,7 @@ async function switchSymbol(sym) {
           <td class="num">${fmt(x.target)}</td><td>${esc(x.stage)}</td><td class="num">${fmt(x.rvol)}</td>
           <td class="reason">${esc(x.detail)}</td></tr>`).join('');
       } else {
-        body.innerHTML = r.rows.map(x => `<tr>
+        body.innerHTML = rows.map(x => `<tr>
           <td class="sym">${esc(x.symbol)}</td><td class="num">${fmt(x.price)}</td>
           <td><b>${esc(x.type)}</b></td><td>${esc(x.timeframe)}</td>
           <td class="${x.verdict === 'BUY-READY' ? 'good' : 'warn'}"><b>${esc(x.verdict)}</b></td>
@@ -939,10 +1093,6 @@ async function switchSymbol(sym) {
           <td class="num">${fmt(x.confidence)}%</td><td class="num"><b>${fmt(x.score)}</b>/10</td>
           <td class="reason">${esc(x.detail)}</td></tr>`).join('');
       }
-
-      id('skipped').innerHTML = r.skipped?.length
-        ? `<span class="tag">rejected in Stage 2 — ${r.skipped.map(esc).join(' · ')}</span>` : '';
-      id('note').textContent = r.note || '';
     }
 
     let wired = false;
@@ -950,10 +1100,14 @@ async function switchSymbol(sym) {
       start() {
         if (!wired) {
           wired = true;
+          if (!filterBar) { filterBar = makeFilterBar(prefix, brkFilterControls(mode), paintRows); id('filters').append(filterBar.el); }
           id('run').addEventListener('click', run);
-          // Changing a filter invalidates the table rather than silently leaving stale rows.
+          // Changing a SERVER filter (region/timeframe/pattern) invalidates the table — a
+          // fresh two-stage scan is required — rather than silently leaving stale rows. The
+          // client FilterBar above just narrows what a scan already returned.
           [id('region'), id('tf'), mode === 'patterns' ? id('pattern') : id('type')].forEach(sel =>
             sel.addEventListener('change', () => {
+              lastRows = []; if (filterBar) filterBar.setCount(0, 0);
               id('body').innerHTML = '';
               id('skipped').innerHTML = '';
               id('meta').textContent = 'Filters changed — press Scan.';
