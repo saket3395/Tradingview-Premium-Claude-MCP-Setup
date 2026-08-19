@@ -86,6 +86,20 @@ footer{color:var(--mut);font-size:11px;text-align:center;padding:14px}
 #tpo-auto-wrap{cursor:pointer}
 #tpo-next{font-variant-numeric:tabular-nums}
 .tpo-toolbar .pill.paused{color:var(--amb);border-color:#3a3115}
+/* reusable filter bar (shared across TPO / breakout / testing tabs) — neutral chrome:
+   colour stays reserved for market meaning (DESIGN.md Meaning-Only Color Rule). */
+.filterbar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:0 0 10px}
+.filterbar .fpill{display:inline-flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:2px 4px 2px 10px;color:var(--mut);font-size:12px}
+.filterbar .fk{font-size:11px;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
+.filterbar select,.filterbar .finput{background:#0f141b;border:1px solid var(--line);border-radius:999px;color:var(--txt);font:inherit;font-size:12px;padding:3px 8px}
+.filterbar select:focus,.filterbar .finput:focus{outline:none;border-color:#4c8dff77}
+.filterbar .finput{min-width:120px;border-radius:6px}
+.filterbar .fcount{color:var(--mut);cursor:default;font-variant-numeric:tabular-nums}
+.filterbar .fcount.filtered{color:var(--acc);border-color:#1e3050}
+.filterbar .fbtn{background:#1f2733;border:1px solid var(--line);color:var(--mut);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer}
+.filterbar .fbtn:hover{border-color:var(--acc);color:var(--txt)}
+@media(max-width:480px){.filterbar .fpill{flex:1 1 auto}.filterbar select,.filterbar .finput{flex:1}}
+
 .tpo-how{margin-bottom:12px;border:1px solid var(--line);border-radius:8px;background:#0f141b}
 .tpo-how>summary{cursor:pointer;padding:8px 12px;font-weight:600;font-size:12px;color:var(--txt);list-style:none;user-select:none}
 .tpo-how>summary::-webkit-details-marker{display:none}
