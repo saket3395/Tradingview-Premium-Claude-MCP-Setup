@@ -67,6 +67,19 @@
     "maxFromHighPct": 15,
     "minConfidence": 55,
     "top": 25,
+    "prebreakout": {
+      "look": 20,
+      "tightMaxPct": 12,
+      "contractRatio": 0.9,
+      "dryUpMax": 0.95,
+      "accMinPct": 52,
+      "nearDistPct": 3,
+      "extendedATR": 4.5,
+      "climaxPct": 14,
+      "maxAtrPct": 9,
+      "confirmVol": 1.4,
+      "highScore": 68
+    },
     "india": {
       "minPrice": 20,
       "minAvgVol": 200000,
