@@ -60,6 +60,26 @@ const F = {
   eq: field => (row, val) => val === 'all' || String(row[field] ?? '') === val,
   min: field => (row, val) => val === 'any' || (row[field] != null && Number(row[field]) >= Number(val)),
   has: field => (row, val) => !val || String(row[field] ?? '').toUpperCase().includes(val.trim().toUpperCase()),
+  // Numeric column filter. Accepts:  >100  >=100  <50  <=50  ·  50-200 (inclusive range)
+  //  ·  a bare number → treated as a minimum. Unparseable input passes everything (never
+  // silently hides a column). Powers the per-column LTP / Entry / SL price filters.
+  range: field => (row, val) => {
+    let s = String(val ?? '').trim().replace(/≥/g, '>=').replace(/≤/g, '<=').replace(/[–—]/g, '-');
+    if (!s) return true;
+    const n = Number(row[field]);
+    if (!isFinite(n)) return false;
+    let m;
+    if ((m = s.match(/^([<>]=?)\s*(\d+(?:\.\d+)?)$/))) {
+      const x = Number(m[2]);
+      return m[1] === '>' ? n > x : m[1] === '>=' ? n >= x : m[1] === '<' ? n < x : n <= x;
+    }
+    if ((m = s.match(/^(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)$/))) {
+      const lo = Number(m[1]), hi = Number(m[2]);
+      return n >= Math.min(lo, hi) && n <= Math.max(lo, hi);
+    }
+    if ((m = s.match(/^(\d+(?:\.\d+)?)$/))) return n >= Number(m[1]);
+    return true;
+  },
 };
 
 let CONFIG = null, POLL_MS = 7000, timer = null;
@@ -223,10 +243,25 @@ async function switchSymbol(sym) {
       { key: 'sig', label: 'Signal', type: 'select', test: F.eq('signal'),
         options: [{ v: 'all', label: 'All' }, { v: 'LONG', label: 'LONG' }, { v: 'SHORT', label: 'SHORT' }] },
       { key: 'state', label: 'State', type: 'select',
-        test: (row, val) => val === 'all' ? true : val === 'valid' ? row.state === 'VALID' : (row.state === 'VALID' || row.state === 'ARMED'),
+        // Actionable = any setup still tradeable this session (VALID in-zone, ARMED waiting,
+        // or EXTENDED ran-past-but-live); excludes TARGET / EXPIRED / INVALID. State is
+        // normalised so a casing/whitespace drift from the scanner can't silently empty the
+        // list. Previously "Actionable" was VALID||ARMED only — EXTENDED (the common live
+        // state) was dropped, so the filter returned empty sets during most of the session.
+        test: (row, val) => {
+          if (val === 'all') return true;
+          const s = String(row.state || '').trim().toUpperCase();
+          if (val === 'valid') return s === 'VALID';
+          return s === 'VALID' || s === 'ARMED' || s === 'EXTENDED';
+        },
         options: [{ v: 'all', label: 'All' }, { v: 'act', label: 'Actionable' }, { v: 'valid', label: 'VALID only' }] },
       { key: 'setup', label: 'Setup', type: 'select', test: F.eq('setup'),
         options: [{ v: 'all', label: 'All' }, { v: 'OPEN-DRIVE', label: 'Open-Drive' }, { v: 'IB-COIL', label: 'IB-Coil' }, { v: 'VALUE-EDGE', label: 'Value-Edge' }, { v: 'EXPANSION', label: 'Expansion' }] },
+      { key: 'conf', label: 'Confidence', type: 'select', test: F.eq('confidence'),
+        options: [{ v: 'all', label: 'All' }, { v: 'High', label: 'High' }, { v: 'Good', label: 'Good' }, { v: 'Fair', label: 'Fair' }] },
+      { key: 'ltp', label: 'LTP', type: 'text', placeholder: '>100 · 50-200', test: F.range('ltp') },
+      { key: 'entry', label: 'Entry', type: 'text', placeholder: '>100 · 50-200', test: F.range('entry') },
+      { key: 'sl', label: 'SL', type: 'text', placeholder: '>100 · 50-200', test: F.range('sl') },
       { key: 'eq', label: 'Min EQ', type: 'select', default: 'any', test: F.min('entryQuality'),
         options: [{ v: 'any', label: 'Any' }, { v: '45', label: '≥45' }, { v: '65', label: '≥65' }] },
       { key: 'rr', label: 'Min R:R', type: 'select', default: 'any', test: F.min('rr'),
