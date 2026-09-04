@@ -1182,7 +1182,7 @@ async function switchSymbol(sym) {
     const num = x => x == null ? '—' : (x > 0 ? '+' : '') + x;
     const rCls = r => r === 'AT PIVOT' ? 'good' : r === 'NEAR' ? 'warn' : '';
     const cols = mode === 'patterns' ? 15 : 14;
-    let busy = false, filterBar = null, lastRows = [], lastThresholds = null;
+    let busy = false, filterBar = null, lastRows = [], lastThresholds = null, lastCoverage = null;
     // Pre-breakout lifecycle tier badge (colour carries the market meaning).
     const tierCell = x => {
       const t = x.tier;
@@ -1256,6 +1256,7 @@ async function switchSymbol(sym) {
 
       lastRows = r.rows || [];
       lastThresholds = r.thresholds;
+      lastCoverage = { analysed: r.analysed, candidates: r.candidates };
       paintRows();
 
       // The Stage-2 rejection list can run to a dozen repeated sentences; a
@@ -1272,8 +1273,13 @@ async function switchSymbol(sym) {
       const total = lastRows.length;
       if (!total) {
         if (filterBar) filterBar.setCount(0, 0);
+        // Stage 2 already covers the whole Stage-1 shortlist, so "raise candidates" is no
+        // longer the advice; what matters is whether the pass actually completed.
         body.innerHTML = emptyRow(cols, { icon: '○', title: 'Nothing close to a breakout in this selection',
-          body: `No candidate sits within ${lastThresholds?.maxDistPct}% of its level — an empty table is an honest answer. Widen the timeframe, or raise <code>breakouts.candidates</code> in <code>config/markets.json</code>.` });
+          body: `No candidate sits within ${lastThresholds?.maxDistPct}% of its level — an empty table is an honest answer.`
+            + (lastCoverage && lastCoverage.analysed < lastCoverage.candidates
+              ? ` Note that Stage 2 only completed <b>${lastCoverage.analysed} of ${lastCoverage.candidates}</b> shortlisted names, so this is not yet a full read — press <b>Scan</b> again to carry on.`
+              : ' Widen the timeframe, or relax the filters.') });
         return;
       }
       const rows = filterBar ? filterBar.apply(lastRows) : lastRows;

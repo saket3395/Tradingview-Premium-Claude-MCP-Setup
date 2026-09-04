@@ -651,11 +651,19 @@
         <b>within 15% of their 52-week high</b>, then ranks them by how close they are, their momentum and their
         relative volume. <b>Stage 2</b> fetches <b>real 4H/Daily/Weekly/Monthly OHLC</b> for the top candidates
         and runs the <b>same detectors as the Pattern Analysis tab</b> — nothing here is approximated.</p>
-        <p><b>Why the shortlist is small.</b> A fresh NSE symbol costs up to five NSE-provider requests and that provider's
-        Cloudflare block trips well below the documented quota. <code>breakouts.candidates</code> (default 10)
-        caps the deep pass, it runs sequentially through the shared rate limiter, and if the limiter trips
-        mid-scan the scan <b>stops and says so</b> rather than presenting a partial result as complete. Results
-        are cached for 10 minutes per filter combination — re-scanning the same filters costs nothing.</p>
+        <p><b>Stage 2 covers the whole shortlist — and what that costs.</b> <code>breakouts.candidates</code>
+        defaults to <b>all</b>, so every name surviving Stage 1 gets real OHLC and the real detectors; there is no
+        arbitrary top-N. That is deliberately expensive: a fresh NSE symbol costs up to five NSE-provider requests,
+        that provider's Cloudflare block trips well below the documented quota, and the deep pass runs
+        <b>sequentially</b> through the shared rate limiter — so a cold full India scan can run for
+        <b>many minutes</b> and may well be cut short by the provider.</p>
+        <p>Three things make that honest rather than merely slow. If the limiter trips, the scan <b>stops and
+        says so</b> instead of presenting a partial result as complete. A stopped-early result is <b>not cached</b>,
+        so pressing <b>Scan</b> again actually retries. And price history is cached per symbol, so a re-run pays
+        nothing for names already fetched and <b>walks further down the list</b> — successive runs converge on full
+        coverage. Watch <b>deep-analysed</b> in the header: that is your real coverage, not a promise.
+        Complete scans are cached for 10 minutes per filter combination. Set
+        <code>breakouts.candidates</code> to a number if you want to cap the pass while probing filters.</p>
         <p><b>What "closest to breakout" means.</b> Each bullish detection carries the level that must be
         cleared (<b>pivot / trigger / neckline / resistance</b>). <b>Distance</b> is that level relative to the
         last close: <b>AT PIVOT</b> ≤0.5% · <b>NEAR</b> ≤2% · <b>APPROACHING</b> ≤5%. Levels already cleared by
@@ -718,8 +726,8 @@
         <b>invalidation level</b> — that, not the label, is the number to trade against.</p>
         <p class="disclosure-note"><b>Honest scope:</b> VCP here is the <b>technical half of SEPA only</b> (no
         earnings or sponsorship data), and a wave count is <b>one interpretation among several</b> that re-labels
-        as new bars print. <b>Distance</b> bands and the 10-minute result cache work exactly as on the
-        Breakout-Patterns tab. Analysis only — no orders are placed.</p>
+        as new bars print. <b>Distance</b> bands, full-shortlist Stage-2 coverage and the 10-minute
+        cache for complete scans work exactly as on the Breakout-Patterns tab. Analysis only — no orders are placed.</p>
       </div>
     </details>
 

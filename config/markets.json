@@ -61,7 +61,7 @@
     }
   },
   "breakouts": {
-    "candidates": 10,
+    "candidates": "all",
     "maxDistPct": 5,
     "maxAbovePct": 1,
     "maxFromHighPct": 15,
