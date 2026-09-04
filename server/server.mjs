@@ -192,7 +192,7 @@ const routes = {
         engine, market,
         tf: url.searchParams.get('tf') || '1D',
         patternType: url.searchParams.get('pattern') || 'all',
-        candidates: Number(url.searchParams.get('candidates')) || undefined,
+        candidates: url.searchParams.get('candidates') ?? undefined,   // 'all' | N | absent -> config
         cfg: { ...(cfg.breakouts || {}), ...(cfg.breakouts?.[market] || {}) },
       });
     } catch (e) { return { ok: false, error: e.message }; }
