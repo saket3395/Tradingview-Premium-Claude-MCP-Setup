@@ -60,6 +60,23 @@ function nseTokenConfigured() {
   try { return !!JSON.parse(readFileSync(file, 'utf8')).access_token; } catch { return false; }
 }
 
+// One place decides what a breakout scan request means, so the plain JSON route and the
+// SSE route can never drift into scanning different things for the same query string.
+async function breakoutArgs(req) {
+  const cfg = json(await readFileP(join(ROOT, 'config', 'markets.json'), 'utf8'));
+  const url = new URL(req.url, `http://localhost:${PORT}`);
+  const market = url.searchParams.get('region') === 'usa' ? 'usa' : 'india';
+  const type = (url.searchParams.get('type') || '').toLowerCase();
+  const engine = type === 'vcp' ? 'vcp' : type === 'elliott' ? 'elliott' : 'patterns';
+  return {
+    engine, market,
+    tf: url.searchParams.get('tf') || '1D',
+    patternType: url.searchParams.get('pattern') || 'all',
+    candidates: url.searchParams.get('candidates') ?? undefined,   // 'all' | N | absent -> config
+    cfg: { ...(cfg.breakouts || {}), ...(cfg.breakouts?.[market] || {}) },
+  };
+}
+
 const send = (res, code, body, type = 'application/json') => {
   res.writeHead(code, { 'content-type': type, 'cache-control': 'no-store' });
   res.end(Buffer.isBuffer(body) || typeof body === 'string' ? body : JSON.stringify(body));
@@ -182,20 +199,8 @@ const routes = {
   //   type=vcp|elliott (second tab). Deliberately on demand — the deep pass costs
   //   provider requests, and the result is cached for 10 minutes per filter combination.
   'GET /api/breakouts': async (req) => {
-    const cfg = json(await readFileP(join(ROOT, 'config', 'markets.json'), 'utf8'));
-    const url = new URL(req.url, `http://localhost:${PORT}`);
-    const market = url.searchParams.get('region') === 'usa' ? 'usa' : 'india';
-    const type = (url.searchParams.get('type') || '').toLowerCase();
-    const engine = type === 'vcp' ? 'vcp' : type === 'elliott' ? 'elliott' : 'patterns';
-    try {
-      return await scanBreakouts({
-        engine, market,
-        tf: url.searchParams.get('tf') || '1D',
-        patternType: url.searchParams.get('pattern') || 'all',
-        candidates: url.searchParams.get('candidates') ?? undefined,   // 'all' | N | absent -> config
-        cfg: { ...(cfg.breakouts || {}), ...(cfg.breakouts?.[market] || {}) },
-      });
-    } catch (e) { return { ok: false, error: e.message }; }
+    try { return await scanBreakouts(await breakoutArgs(req)); }
+    catch (e) { return { ok: false, error: e.message }; }
   },
 
   // Cached Data tab — what history is held locally, and whether analysing a given symbol
@@ -288,9 +293,51 @@ const routes = {
   },
 };
 
+// Routes that own their own response stream. A full-shortlist breakout scan is minutes of
+// sequential provider calls; without this the browser stares at one pending request the
+// whole time. Server-Sent Events need no dependency and no protocol upgrade, so they pass
+// through the Tailscale HTTPS proxy like any other HTTP response.
+const streamRoutes = {
+  'GET /api/breakouts/stream': async (req, res) => {
+    res.writeHead(200, {
+      'content-type': 'text/event-stream; charset=utf-8',
+      'cache-control': 'no-store, no-transform',
+      'connection': 'keep-alive',
+      'x-accel-buffering': 'no',       // ask any intermediary not to buffer the stream
+    });
+    const emit = (event, data) => {
+      if (res.writableEnded || res.destroyed) return;
+      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
+    // Abort the scan when the client goes away, so a closed tab stops burning quota.
+    const ac = new AbortController();
+    req.on('close', () => ac.abort());
+    // Keep intermediaries from dropping a connection that is quiet during a slow symbol.
+    const ping = setInterval(() => { if (!res.writableEnded) res.write(': ping\n\n'); }, 15000);
+    try {
+      const result = await scanBreakouts({
+        ...(await breakoutArgs(req)),
+        onProgress: ev => emit('progress', ev),
+        signal: ac.signal,
+      });
+      emit('result', result);
+    } catch (e) {
+      emit('failed', { ok: false, error: e.message });
+    } finally {
+      clearInterval(ping);
+      if (!res.writableEnded) res.end();
+    }
+  },
+};
+
 const handler = async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
   const key = `${req.method} ${url.pathname}`;
+
+  if (streamRoutes[key]) {
+    try { return await streamRoutes[key](req, res); }
+    catch (e) { if (!res.headersSent) return send(res, 500, { error: e.message }); return res.end(); }
+  }
 
   if (routes[key]) {
     try {

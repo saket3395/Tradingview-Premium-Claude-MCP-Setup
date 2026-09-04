@@ -330,6 +330,36 @@ h2.subhead{
 .statstrip .stat.status-live .dot{animation:pulse 2.4s var(--ease) infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
 
+/* Scan progress. A full-shortlist breakout pass is minutes of sequential provider
+   calls, so it reports itself: a determinate bar over the shortlist, the counts that
+   matter, and a way out. Occupies the same slot as the finished stat strip, so the
+   panel does not jump when the scan completes. */
+.scanprog{
+  background:var(--inset);border:1px solid var(--line);border-radius:var(--r-md);
+  padding:var(--s3) var(--s4);margin:0 0 var(--s4);
+}
+.scanprog .sp-head{display:flex;align-items:center;gap:var(--s3);margin-bottom:var(--s2)}
+.scanprog .sp-phase{
+  color:var(--mut);font-size:var(--t-label);font-weight:700;
+  text-transform:uppercase;letter-spacing:.4px;
+}
+.scanprog .sp-count{font-size:var(--t-body);font-weight:600;font-variant-numeric:tabular-nums}
+.scanprog .sp-cancel{height:24px;padding:0 var(--s3);color:var(--mut);background:transparent}
+.scanprog .sp-cancel:hover{color:var(--red);border-color:var(--red-line);background:var(--red-fill)}
+.scanprog .sp-track{height:4px;border-radius:var(--r-pill);background:var(--well);overflow:hidden}
+.scanprog .sp-bar{
+  height:100%;width:0;border-radius:var(--r-pill);background:var(--acc);
+  transition:width 240ms var(--ease);
+}
+.scanprog .sp-sub{
+  margin-top:var(--s2);color:var(--mut);font-size:var(--t-micro);line-height:1.5;
+  font-variant-numeric:tabular-nums;
+}
+.scanprog .sp-sub b{color:var(--txt)}
+.scanprog .sp-sub i{font-style:normal;color:var(--dim)}
+.scanprog .sp-sym{font-family:var(--mono);color:var(--txt)}
+@media (prefers-reduced-motion: reduce){ .scanprog .sp-bar{transition:none} }
+
 /* ----------------------------------------------------------- 7. toolbar rows */
 /* One toolbar grammar for every tab: controls left, status right, all on the
    shared 28px control height so nothing sits half a pixel off the baseline. */
