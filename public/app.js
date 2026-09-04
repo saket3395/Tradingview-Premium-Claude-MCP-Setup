@@ -1198,11 +1198,11 @@ async function switchSymbol(sym) {
         + (extra ? `<span class="why clamp">${esc(extra)}</span>` : '') + `</td>`;
     };
 
-    function query() {
+    function query(path = '/api/breakouts') {
       const p = new URLSearchParams({ region: id('region').value, tf: id('tf').value });
       if (mode === 'patterns') p.set('pattern', id('pattern').value);
       else p.set('type', id('type').value);
-      return '/api/breakouts?' + p.toString();
+      return path + '?' + p.toString();
     }
 
     async function run() {
@@ -1210,14 +1210,24 @@ async function switchSymbol(sym) {
       busy = true;
       const meta = id('meta'), body = id('body');
       meta.className = 'metaline';
-      meta.textContent = 'Stage 1: screening the universe… Stage 2 then fetches real OHLC for the shortlist (this can take a minute).';
+      meta.className = 'metaline';
+      meta.textContent = 'Stage 1: screening the universe…';
       id('note').innerHTML = ''; id('skipped').innerHTML = '';
       body.innerHTML = skeletonRows(cols, 6);
       body.parentElement.classList.add('is-busy');
+      lastRows = [];
       let r;
-      try { r = await api(query()); } catch (e) { r = { ok: false, error: e.message }; }
+      try { r = await runStreaming(); } catch (e) { r = { ok: false, error: e.message }; }
       busy = false;
       body.parentElement.classList.remove('is-busy');
+      if (r && r.__cancelled) {                     // user pressed Cancel — keep what arrived
+        meta.className = 'metaline'; meta.innerHTML = '';
+        id('updated').textContent = 'cancelled ' + new Date().toLocaleTimeString();
+        id('note').innerHTML = stateBlock({ kind: 'warn', icon: '⚠', title: 'Scan cancelled',
+          body: `Stopped after <b>${r.processed}</b> of <b>${r.total}</b> candidates. Symbols already fetched are cached, so pressing <b>Scan</b> again resumes from here rather than starting over.` });
+        paintRows();
+        return;
+      }
       id('updated').textContent = 'updated ' + new Date().toLocaleTimeString();
       if (!r || !r.ok) {
         meta.className = 'metaline';
@@ -1265,6 +1275,71 @@ async function switchSymbol(sym) {
         ? `<details class="disclosure skiplist"><summary>${r.skipped.length} candidate(s) rejected in Stage 2</summary>`
           + `<div class="disclosure-body"><ul>${r.skipped.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div></details>` : '';
       if (r.note) id('note').insertAdjacentHTML('beforeend', `<p class="hint">${esc(r.note)}</p>`);
+    }
+
+    // A full-shortlist pass is minutes of sequential provider calls. Server-Sent Events
+    // report it as it happens — progress per candidate, rows as they qualify — instead of
+    // leaving one pending request and a static message on screen. Falls back to the plain
+    // JSON endpoint wherever EventSource is unavailable or the stream dies before it says
+    // anything, so the tab never depends on streaming working.
+    function runStreaming() {
+      if (typeof EventSource === 'undefined') return api(query());
+      return new Promise((resolve, reject) => {
+        const es = new EventSource(query('/api/breakouts/stream'));
+        let sawEvent = false, done = false, total = 0, processed = 0, analysed = 0, lastPaint = 0;
+        const finish = (v, err) => {
+          if (done) return; done = true; es.close();
+          err ? reject(err) : resolve(v);
+        };
+        const cancel = () => finish({ __cancelled: true, processed, total });
+
+        es.addEventListener('progress', e => {
+          sawEvent = true;
+          const p = JSON.parse(e.data);
+          if (p.phase === 'shortlist') { total = p.candidates; renderProgress({ total, processed: 0, analysed: 0, found: 0, cancel }); }
+          else if (p.phase === 'symbol') {
+            processed = p.processed; analysed = p.analysed;
+            renderProgress({ total: p.total, processed, analysed, found: p.found, symbol: p.symbol, cancel });
+          } else if (p.phase === 'row') {
+            // Arrival order, not final rank — the server sorts by tier on completion and
+            // the result event replaces these. Painting is throttled so 300 events do not
+            // become 300 full table repaints.
+            lastRows.push(p.row);
+            if (Date.now() - lastPaint > 300) { lastPaint = Date.now(); paintRows(); }
+          }
+        });
+        es.addEventListener('result', e => { sawEvent = true; finish(JSON.parse(e.data)); });
+        es.addEventListener('failed', e => { sawEvent = true; finish(JSON.parse(e.data)); });
+        es.addEventListener('error', () => {
+          // EventSource retries on its own; a scan must not silently restart, so close and
+          // either fall back (nothing arrived yet) or surface what we have.
+          if (done) return;
+          es.close();
+          if (!sawEvent) { done = true; api(query()).then(resolve, reject); }
+          else finish({ ok: false, error: 'the scan stream was interrupted' });
+        });
+      });
+    }
+
+    // Progress panel: a determinate bar plus the counts that actually matter — how far
+    // through the shortlist, how many completed real analysis, how many qualified.
+    function renderProgress({ total, processed, analysed, found, symbol, cancel }) {
+      const meta = id('meta');
+      const pct = total ? Math.round(processed / total * 100) : 0;
+      if (!meta.classList.contains('scanprog')) {
+        meta.className = 'scanprog';
+        meta.innerHTML = `<div class="sp-head"><span class="sp-phase"></span><span class="grow"></span>`
+          + `<span class="sp-count"></span><button type="button" class="fbtn sp-cancel">Cancel</button></div>`
+          + `<div class="sp-track"><div class="sp-bar"></div></div><div class="sp-sub"></div>`;
+        meta.querySelector('.sp-cancel').addEventListener('click', () => cancel());
+      }
+      meta.querySelector('.sp-phase').textContent = 'Stage 2 — analysing the shortlist';
+      meta.querySelector('.sp-count').textContent = `${processed} / ${total}`;
+      meta.querySelector('.sp-bar').style.width = pct + '%';
+      meta.querySelector('.sp-sub').innerHTML =
+        `${analysed} analysed · <b>${found}</b> qualifying so far`
+        + (symbol ? ` · <span class="sp-sym">${esc(symbol)}</span>` : '')
+        + (found ? ' · <i>listed in arrival order until the scan finishes</i>' : '');
     }
 
     // Repaint the shortlist through the client filter without re-scanning.
