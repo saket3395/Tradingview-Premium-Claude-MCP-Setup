@@ -14,6 +14,20 @@ colors:
   caution: "#d9a441"
   interactive: "#3b82f6"
   control: "#1f2733"
+  hairline-soft: "#1e242e"
+  text-dim: "#5d6877"
+  bull-fill: "#10261f"
+  bull-line: "#1f3b30"
+  bear-fill: "#2a1716"
+  bear-line: "#3b2422"
+  caution-fill: "#2a2410"
+  caution-line: "#3a3115"
+  interactive-fill: "#1c2740"
+  interactive-line: "#1e3050"
+  interactive-on-fill: "#5c98f8"
+  target: "#3fb6a8"
+  target-fill: "#122a2a"
+  neutral-fill: "#20242c"
 typography:
   symbol:
     fontFamily: "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
@@ -55,6 +69,12 @@ spacing:
   md: "8px"
   lg: "12px"
   xl: "16px"
+  xxl: "24px"
+sizing:
+  control-height: "28px"
+  data-row-height: "30px"
+  shell: "1760px"
+  shell-narrow: "1280px"
 components:
   button:
     backgroundColor: "{colors.control}"
@@ -150,6 +170,14 @@ A four-grey neutral chassis carrying four meaning-only signal colors on a near-b
 
 **The Soft-White Rule.** Primary text is `#d7dde6`, never `#ffffff`. Pure white on near-black vibrates and fatigues; the off-white reads calmer over a long session.
 
+### Themes
+
+**Dark is the product, light is an option.** The OS `prefers-color-scheme` is deliberately *not* consulted: a trading terminal should not repaint itself because someone's laptop is in light mode. A header toggle sets `data-theme="light"` on the root, persisted per browser and applied by an inline script before first paint so there is no flash. Only tokens are redefined — no component rule knows a theme exists.
+
+The light palette is not the dark one inverted. Signal hues are darkened for legibility on light surfaces (`#26a17b` green reads at 2.4:1 on white and would fail as text; light mode uses `#0d7a56`), and the tonal stack runs the other way — `#eef1f5` ground, white panels, `#f4f6f9` inset.
+
+**The AA Floor.** Every text/surface pairing in both themes measures **≥4.5:1** (dark min 4.60, light min 4.67). This forced one correction to the original palette: `#3b82f6` label text on the `#1c2740` accent fill — the **ARMED** state badge and the **Good** confidence badge — measured **4.04:1**, below the floor this document already required. The interactive hue is unchanged everywhere it carries meaning (focus rings, borders, active affordances); only the label *inside* an accent fill is lifted to `--interactive-on-fill` `#5c98f8` (5.2:1).
+
 ## Typography
 
 **UI Font:** system sans (`ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto`)
@@ -171,9 +199,17 @@ A four-grey neutral chassis carrying four meaning-only signal colors on a near-b
 
 ## Layout
 
-A centered two-column CSS grid, `max-width: 1280px`, `gap: 12px`, `padding: 12px`. Cards default to one column; wide/primary panels take `.span2` (full width). The masthead is a sticky flex bar (brand · tab nav · live status pills). Table headers are sticky within horizontally-scrollable wrappers (`.tpo-tablewrap { overflow-x: auto }`) so dense tables never break the page's vertical rhythm.
+A centered two-column CSS grid, `gap: 12px`, `padding: 12px 16px`. Cards default to one column; wide/primary panels take `.span2` (full width).
 
-Density is deliberately high — 12px card padding, 6–8px internal gaps, 6px table cell padding — but the two-column max-width and generous line-height keep it readable, not cramped. Responsive: **≤820px** collapses to a single column and `.span2` stops spanning; **≤480px** tightens page padding to 8px and card padding to 10px. This is a desktop-first instrument that stays usable on a phone, not a mobile-first app.
+**Two shell widths, by content type.** Data views run to `--shell: 1760px`; prose-led views (Start Here) stay at `--shell-narrow: 1280px`. This *amends* the original single 1280px cap, and deliberately: at 1280px a 13-column scanner squeezed the rationale column to its 220px minimum, which wrapped it to six or seven lines and pushed rows to **134px** — the cap was buying whitespace at the cost of the density it was written to protect. Widening the data shell (with the rationale clamped to two lines) took the same 34 setups from a 4,906px page to 1,230px. The rule's intent — *this is an instrument, not a landing page* — is now enforced by keeping **prose** at a book measure rather than by capping the **grid**.
+
+**The masthead is two sticky rails:** identity + live status on top, tab navigation below. A single combined row wrapped to three lines by 1100px and stood **257px tall on a 375px phone** — a third of the viewport, permanently sticky; the split rails hold at 78px desktop / 76px mobile, and the nav rail scrolls sideways rather than wrapping. Hairline separators (`.tabgap`) group the twelve tabs into orientation · live signals · analysis · idea scans · journal · utility.
+
+**The first column pins too.** `th:first-child` / `td:first-child` are `position: sticky; left: 0` with a hairline seam. A 14-column scanner cannot fit a phone or a tablet, and without a pinned symbol you end up reading a row of entry/stop/target numbers with no idea whose they are. Hairline, not shadow, per the Hairline Rule.
+
+**Table headers pin to their wrapper.** `.tpo-tablewrap` is the scroll region (`overflow: auto`, capped at `calc(100dvh - header - 170px)`) and `th` is `position: sticky; top: 0` inside it. The earlier arrangement — `overflow-x: auto` with `th { top: 0 }` aimed at the page — never pinned anything, because a horizontally-scrolling wrapper is already a scroll container on both axes (and `overflow-y: clip` is no escape: beside a scrolling x-axis it computes to `hidden`). The height cap only engages on tables that are actually long; a six-row analysis table never reaches it.
+
+Density is deliberately high — 12px card padding, 6–8px internal gaps, 4px table cell padding, 46px scanner rows. Responsive: **≤1100px** collapses to a single column and `.span2` stops spanning; **≤820px** tightens page and card padding; **≤560px** drops the filter bar to two columns and the tile grids to two-up. This is a desktop-first instrument that stays usable on a phone, not a mobile-first app.
 
 ## Elevation & Depth
 
@@ -194,6 +230,10 @@ Tight, rectangular, terminal geometry. The radius scale climbs with surface size
 
 ## Components
 
+### Naming
+
+Component classes are named for **what the component is**, never for the tab that first needed it. The sheet had grown the other way — eleven of the twelve tabs styled their tables with `.tpo-table` and their disclosures with `.tpo-how`, which reads as if those tabs were borrowing the TPO scanner's styles rather than sharing a system. Current names: `.dtable` · `.tablewrap` · `.toolbar` · `.disclosure` (`-body`, `-note`, `-trade`) · `.metaline` · `.readout` · `.table-state` · `.statstrip` · `.state-block` · `.filterbar` · `.combo` · `.suggest` · `.text-input`. Element **ids** still carry a tab prefix (`#tpo-body`, `#utpo-meta`) — there they are identity, not styling.
+
 ### Buttons
 - **Shape:** 6px radius (`{rounded.sm}`), 1px hairline border.
 - **Default:** `control` face (`#1f2733`), `text` label, padding `5px 11px`. The compact `.btn-confirm` variant runs `3px 9px` at 11px for in-table actions.
@@ -213,14 +253,24 @@ Tight, rectangular, terminal geometry. The radius scale climbs with surface size
 - **Focus:** border to translucent blue (`#4c8dff77`), outline removed. Calm, not glowing.
 
 ### Navigation (tabs)
-- **Style:** transparent, muted text, 6px radius, 12px. **Hover:** text brightens to `text`. **Active:** `panel` fill + hairline border + `text`. The active tab looks like a raised chip of the page surface.
-- **Mobile:** the tab row wraps (`flex-wrap`); no hamburger — every surface stays one tap away.
+- **Style:** transparent, muted text, 12px, 36px tall, square. **Hover:** `inset` fill, text brightens to `text`. **Active:** a 2px Interactive Blue **underline** + `text` + 600 weight.
+- **Why an underline, not a chip:** a filled active chip made the chrome the brightest object on a rail of twelve, competing with the data below. The underline marks position while keeping the rail visually flat.
+- **Mobile:** the rail scrolls horizontally (`flex-wrap: nowrap`, hidden scrollbar); no hamburger and no wrapping — every surface stays one tap away without the nav eating the viewport.
 
 ### Signal State badge (signature)
 The system's defining component. A 6px, 11px/700 tag whose fill+text encode the plan's live state, each on its own tinted well: **VALID** (green `#10261f`/`#26a17b`) · **ARMED** (blue `#1c2740`/`#3b82f6`) · **EXTENDED** (amber `#2a2410`/`#d9a441`) · **TARGET** (teal `#122a2a`/`#3fb6a8`) · **INVALID** (red `#2a1716`/`#e5534b`) · **EXPIRED** (grey `#20242c`/muted). The state *is* the instruction — the badge tells you whether to act.
 
 ### Decision tile (signature)
-A responsive grid (`auto-fill minmax(150px, 1fr)`) of `inset` tiles, each an uppercase micro-label (`.dk`) over a value (`.dv`), with `good`/`bad`/`warn` variants coloring the border + value. Used for the Signal Summary read and the Start Here setup status — the "instrument cluster" of the terminal.
+A responsive grid (`auto-fit minmax(180px, 1fr)`) of `inset` tiles, each an uppercase micro-label (`.dk`) over a value (`.dv`), with `good`/`bad`/`warn` variants coloring the value and adding a 2px inset left rail in the signal color. Used for the Signal Summary read and the Start Here setup status — the "instrument cluster" of the terminal. `auto-fit` (not `auto-fill`) so a three-tile panel fills its row instead of clustering into narrow columns on the left of a wide card.
+
+### Stat strip (signature)
+The scan header: a single hairline-divided row of label-over-value cells (`.sk` 10px caps / `.sv` 13px semibold tabular), led by a pulsing feed dot (`live` green / `delayed` amber / `closed` muted) and closed by a right-aligned timestamp. It replaces a flat run of equal-weight tags in which `universe 3150` read as loudly as `setups 31`; the ordering is now **what you act on first** (feed · setups · actionable · long/short), then context. Shared by both TPO scanners and both breakout scanners, so the four scan tabs are read the same way.
+
+### State block (empty · loading · error)
+The one vocabulary for "there is nothing here, and here is the honest reason": a dashed-hairline `inset` panel with a glyph, a `text`-weight title, and a ≤52ch explanation — `err` (solid red) and `warn` (solid amber) variants for failures and partial results. It occupies the space the data would have taken, so the layout does not collapse and an honest "no data" reads as an answer rather than as a caption. Inside a table it renders through a full-width `colspan` cell; skeleton rows (`.skel`, shimmering, disabled under `prefers-reduced-motion`) stand in while a multi-thousand-name universe scan is in flight.
+
+### Filter bar
+A wrapping flex row of label-over-control cells on the shared 28px control height, in an `inset` well, with the "N of M shown" count and **Reset** riding the trailing edge. Client-side only — it narrows rows already fetched and never triggers a provider request, and selections persist per tab in `localStorage` so a filter survives an auto-refresh cycle.
 
 ### "How it works" disclosure (signature)
 A `<details>` panel (`inset` fill, 8px, custom ▸/▾ marker) holding method prose, closed by a dashed-top caveat note (`.tpo-how-note`). This is the Analyst's Desk made literal: the methodology and its honest limits are always one click away, never hidden and never overstated.
@@ -237,7 +287,9 @@ A `<details>` panel (`inset` fill, 8px, custom ▸/▾ marker) holding method pr
 
 ### Don't:
 - **Don't** introduce a decorative or brand accent color; there is no non-semantic hue in this system.
+- **Don't** name a component class after the tab that first needed it, and don't hardcode a color, spacing or radius in a component rule — every value comes from a token, which is what makes the light theme a single block of overrides.
+- **Don't** let the OS color-scheme flip the product; light mode is an explicit, persisted user choice.
 - **Don't** put drop shadows on resting cards, tiles, or badges — shadow is reserved for truly floating overlays.
 - **Don't** fabricate numbers, states, testimonials, or performance to fill a panel — a truthful "no data" is the correct design (product invariant).
 - **Don't** let primary text or state colors fall below WCAG AA contrast on `panel`/`terminal-ink`; density must never cost legibility.
-- **Don't** widen the container past ~1280px or trade the tabular density for marketing whitespace — this is an instrument, not a landing page.
+- **Don't** trade tabular density for marketing whitespace — this is an instrument, not a landing page. Prose columns stay at a book measure (`--shell-narrow`, ~1280px / 88ch); the *data* grid may run to `--shell` (1760px) where the extra width buys columns rather than padding.
