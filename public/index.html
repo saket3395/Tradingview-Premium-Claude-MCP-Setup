@@ -8,27 +8,40 @@
 </head>
 <body>
 <header>
-  <div class="brand">TV × Claude <span>Intraday MCP</span></div>
-  <nav class="tabs" id="tabs">
-    <button class="tab active" data-view="start" title="New here? What this dashboard is, what each tab does, and what you need to set up.">Start Here</button>
-    <button class="tab" data-view="dashboard" title="Live intraday read of one symbol from your active TradingView chart (bias, trend, volume, entry readiness).">Dashboard</button>
-    <button class="tab" data-view="tpo" title="Auto-scans the whole NSE for intraday setups, each with a fixed entry / stop / target and a state that tells you when to act.">India TPO Scanner</button>
-    <button class="tab" data-view="tpo-usa" title="Same intraday setup scanner for US stocks (NASDAQ/NYSE/AMEX), no circuit clamp.">USA TPO Scanner</button>
-    <button class="tab" data-view="patterns" title="Top-down chart-pattern + trend-stage report for one symbol across Monthly → Weekly → Daily → 4H.">Pattern Analysis</button>
-    <button class="tab" data-view="vcp" title="Mark Minervini VCP/SEPA screen for one symbol: trend template, RS rating, tight base, and a pivot trade plan.">VCP Analysis</button>
-    <button class="tab" data-view="elliott" title="Elliott Wave count for one symbol with alternate counts and an explicit invalidation price.">Elliott Wave</button>
-    <button class="tab" data-view="brk" title="Ranks stocks across the market closest to breaking out of a chart pattern (long-only).">Breakout-Patterns</button>
-    <button class="tab" data-view="brk2" title="Same breakout idea scan, but the level is a Minervini VCP pivot or an Elliott wave level.">VCP/Elliott-Breakout</button>
-    <button class="tab" data-view="cache" title="Shows what price history is stored locally and whether analysing a symbol will cost an upstream request.">Cached Data</button>
-    <button class="tab" data-view="testing" title="Forward-test journal of every frozen plan, pass/fail gates, and an India 1-minute backtest.">Testing</button>
-    <button class="tab" data-view="analytics" title="Monte Carlo, market-regime (HMM) and robustness stats computed only from real journal outcomes.">Analytics</button>
-  </nav>
-  <div class="status" id="status">
-    <span class="pill" id="pill-cdp">CDP …</span>
-    <span class="pill" id="pill-app">—</span>
-    <span class="pill" id="pill-tabs">tabs —</span>
-    <span class="pill" id="pill-updated">updated —</span>
-    <label class="pill"><input type="checkbox" id="autopoll" checked /> live</label>
+  <!-- Rail 1: identity + live connection status. Split from navigation so neither
+       rail ever wraps — the single combined row stood 257px tall on a phone. -->
+  <div class="rail rail-top">
+    <div class="brand">TV &times; Claude <span>Intraday MCP</span></div>
+    <div class="status" id="status">
+      <span class="pill" id="pill-cdp">CDP …</span>
+      <span class="pill" id="pill-app">—</span>
+      <span class="pill" id="pill-tabs">tabs —</span>
+      <span class="pill" id="pill-updated">updated —</span>
+      <label class="pill"><input type="checkbox" id="autopoll" checked /> live</label>
+    </div>
+  </div>
+  <!-- Rail 2: navigation. Scrolls sideways rather than wrapping; hairlines group
+       the tabs into orientation / live signals / analysis / idea scans / journal. -->
+  <div class="rail rail-nav">
+    <nav class="tabs" id="tabs" aria-label="Dashboard sections">
+      <button class="tab active" data-view="start" title="New here? What this dashboard is, what each tab does, and what you need to set up.">Start Here</button>
+      <span class="tabgap" aria-hidden="true"></span>
+      <button class="tab" data-view="dashboard" title="Live intraday read of one symbol from your active TradingView chart (bias, trend, volume, entry readiness).">Dashboard</button>
+      <button class="tab" data-view="tpo" title="India TPO Scanner — auto-scans the whole NSE for intraday setups, each with a fixed entry / stop / target and a state that tells you when to act.">India TPO</button>
+      <button class="tab" data-view="tpo-usa" title="USA TPO Scanner — same intraday setup scanner for US stocks (NASDAQ/NYSE/AMEX), no circuit clamp.">USA TPO</button>
+      <span class="tabgap" aria-hidden="true"></span>
+      <button class="tab" data-view="patterns" title="Pattern Analysis — top-down chart-pattern + trend-stage report for one symbol across Monthly → Weekly → Daily → 4H.">Patterns</button>
+      <button class="tab" data-view="vcp" title="VCP Analysis — Mark Minervini VCP/SEPA screen for one symbol: trend template, RS rating, tight base, and a pivot trade plan.">VCP</button>
+      <button class="tab" data-view="elliott" title="Elliott Wave count for one symbol with alternate counts and an explicit invalidation price.">Elliott Wave</button>
+      <span class="tabgap" aria-hidden="true"></span>
+      <button class="tab" data-view="brk" title="Breakout-Patterns — ranks stocks across the market closest to breaking out of a chart pattern (long-only).">Breakouts</button>
+      <button class="tab" data-view="brk2" title="VCP/Elliott-Breakout — same breakout idea scan, but the level is a Minervini VCP pivot or an Elliott wave level.">VCP / EW Breakouts</button>
+      <span class="tabgap" aria-hidden="true"></span>
+      <button class="tab" data-view="testing" title="Testing — forward-test journal of every frozen plan, pass/fail gates, and an India 1-minute backtest.">Testing</button>
+      <button class="tab" data-view="analytics" title="Analytics — Monte Carlo, market-regime (HMM) and robustness stats computed only from real journal outcomes.">Analytics</button>
+      <span class="tabgap" aria-hidden="true"></span>
+      <button class="tab" data-view="cache" title="Cached Data — shows what price history is stored locally and whether analysing a symbol will cost an upstream request.">Cached Data</button>
+    </nav>
   </div>
 </header>
 
@@ -174,11 +187,11 @@
                aria-autocomplete="list" aria-controls="dash-suggest" />
         <ul class="pat-suggest hidden" id="dash-suggest" role="listbox"></ul>
       </div>
-      <button id="dash-load" class="btn-confirm">Load</button>
+      <button id="dash-load" class="btn-confirm primary">Load</button>
       <span class="pill" id="dash-state">no symbol</span>
     </div>
 
-    <div id="signal-empty" class="empty">Enter a symbol above and press Load — the Signal Summary reads that symbol from your TradingView chart.</div>
+    <div id="signal-empty" class="empty"><div class="state-block"><div class="sb-icon" aria-hidden="true">◎</div><div class="sb-title">No symbol loaded</div><p>Type a symbol above and press <b>Load</b>. The Signal Summary reads that exact symbol from your TradingView chart.</p></div></div>
     <div id="signal-body" class="hidden">
       <div class="sigtop">
         <div class="sym" id="sig-sym">—</div>
@@ -202,7 +215,7 @@
 
   <!-- INDIA INTRADAY -->
   <section class="card market" id="m-india">
-    <h2 class="mhead">🇮🇳 India — Intraday <small id="india-session"></small></h2>
+    <h2 class="mhead">🇮🇳&nbsp;India — Intraday <small id="india-session"></small></h2>
     <div class="tfs" id="india-tfs"></div>
     <div class="scan"><div class="scan-head">Fast scan <small>(NSE/BSE watchlist)</small></div><ul class="symlist" id="india-scan"></ul></div>
     <div class="checklist"><div class="scan-head">Trade checklist</div><ul id="india-check"></ul></div>
@@ -218,9 +231,10 @@
       <span class="pill" id="tpo-cycle">every 30s</span>
       <span class="pill" id="tpo-next">next —</span>
       <span class="grow"></span>
-      <button id="tpo-refresh" class="btn-confirm">Refresh now</button>
+      <button id="tpo-refresh" class="btn-confirm primary">Refresh now</button>
     </div>
 
+    <div class="how-row">
     <details class="tpo-how" id="tpo-how">
       <summary>How it works</summary>
       <div class="tpo-how-body">
@@ -274,9 +288,10 @@
         Target 1 → square off before 15:20 IST. Analysis only — no orders are placed for you.</p>
       </div>
     </details>
+    </div>
 
+    <div class="statstrip" id="tpo-meta"></div>
     <div id="tpo-filters"></div>
-    <div class="tpo-meta" id="tpo-meta">Loading…</div>
     <div class="tpo-tablewrap">
       <table class="tpo-table" id="tpo-table">
         <thead><tr>
@@ -302,9 +317,10 @@
       <span class="pill" id="utpo-cycle">every 30s</span>
       <span class="pill" id="utpo-next">next —</span>
       <span class="grow"></span>
-      <button id="utpo-refresh" class="btn-confirm">Refresh now</button>
+      <button id="utpo-refresh" class="btn-confirm primary">Refresh now</button>
     </div>
 
+    <div class="how-row">
     <details class="tpo-how" id="utpo-how">
       <summary>How it works</summary>
       <div class="tpo-how-body">
@@ -350,9 +366,10 @@
         shown level → book/trail at Target 1 → flat by the close. Analysis only — no orders are placed.</p>
       </div>
     </details>
+    </div>
 
+    <div class="statstrip" id="utpo-meta"></div>
     <div id="utpo-filters"></div>
-    <div class="tpo-meta" id="utpo-meta">Loading…</div>
     <div class="tpo-tablewrap">
       <table class="tpo-table" id="utpo-table">
         <thead><tr>
@@ -380,7 +397,7 @@
                aria-autocomplete="list" aria-controls="pat-suggest" />
         <ul class="pat-suggest hidden" id="pat-suggest" role="listbox"></ul>
       </div>
-      <button id="pat-run" class="btn-confirm">Analyze</button>
+      <button id="pat-run" class="btn-confirm primary">Analyze</button>
       <span class="pill" id="pat-src">—</span>
       <span class="grow"></span>
       <span class="pill" id="pat-updated">—</span>
@@ -415,25 +432,25 @@
       </div>
     </details>
 
-    <div id="pat-empty" class="empty">Enter a symbol and press Analyze. The box prefills from your active TradingView chart.</div>
+    <div id="pat-empty" class="empty"><div class="state-block"><div class="sb-icon" aria-hidden="true">◎</div><div class="sb-title">No symbol analysed yet</div><p>Type a symbol above and press <b>Analyze</b>. The box prefills from your active TradingView chart, and the full method is in <b>How this analysis works</b>.</p></div></div>
     <div id="pat-body" class="hidden">
       <h2>Overall Assessment</h2>
       <div class="decision" id="pat-overall"></div>
       <div class="tpo-meta" id="pat-missing"></div>
 
-      <h2>Timeframe Analysis <small>· top-down</small></h2>
+      <h2 class="subhead">Timeframe Analysis <small>· top-down</small></h2>
       <div class="tpo-tablewrap"><table class="tpo-table" id="pat-tf"></table></div>
 
-      <h2 style="margin-top:14px">Stage Analysis <small>· Weinstein 30-period stage line</small></h2>
+      <h2 class="subhead">Stage Analysis <small>· Weinstein 30-period stage line</small></h2>
       <div class="tpo-tablewrap"><table class="tpo-table" id="pat-stages"></table></div>
 
-      <h2 style="margin-top:14px">Pattern Summary</h2>
+      <h2 class="subhead">Pattern Summary</h2>
       <div class="tpo-tablewrap"><table class="tpo-table" id="pat-patterns"></table></div>
 
-      <h2 style="margin-top:14px">Key Support &amp; Resistance <small>· multi-timeframe confluence</small></h2>
+      <h2 class="subhead">Key Support &amp; Resistance <small>· multi-timeframe confluence</small></h2>
       <div class="tpo-tablewrap"><table class="tpo-table" id="pat-levels"></table></div>
 
-      <h2 style="margin-top:14px">Final Conclusion</h2>
+      <h2 class="subhead">Final Conclusion</h2>
       <ul class="signals" id="pat-conclusion"></ul>
     </div>
     <div class="hint" id="pat-note"></div>
@@ -451,7 +468,7 @@
                aria-autocomplete="list" aria-controls="vcp-suggest" />
         <ul class="pat-suggest hidden" id="vcp-suggest" role="listbox"></ul>
       </div>
-      <button id="vcp-run" class="btn-confirm">Analyze</button>
+      <button id="vcp-run" class="btn-confirm primary">Analyze</button>
       <span class="pill" id="vcp-src">—</span>
       <span class="grow"></span>
       <span class="pill" id="vcp-updated">—</span>
@@ -487,27 +504,27 @@
       </div>
     </details>
 
-    <div id="vcp-empty" class="empty">Enter a symbol and press Analyze. The box prefills from your active TradingView chart.</div>
+    <div id="vcp-empty" class="empty"><div class="state-block"><div class="sb-icon" aria-hidden="true">◎</div><div class="sb-title">No symbol analysed yet</div><p>Type a symbol above and press <b>Analyze</b>. The box prefills from your active TradingView chart, and the full method is in <b>How this analysis works</b>.</p></div></div>
     <div id="vcp-body" class="hidden">
       <h2>SEPA Verdict</h2>
       <div class="decision" id="vcp-verdict"></div>
       <div class="tpo-meta" id="vcp-why"></div>
 
-      <h2 style="margin-top:14px">Trend Template <small>· all eight criteria · ≥7/8 required to proceed</small></h2>
+      <h2 class="subhead">Trend Template <small>· all eight criteria · ≥7/8 required to proceed</small></h2>
       <div class="tpo-tablewrap"><table class="tpo-table" id="vcp-tt"></table></div>
 
-      <h2 style="margin-top:14px">Volatility Contractions</h2>
+      <h2 class="subhead">Volatility Contractions</h2>
       <div class="tpo-tablewrap"><table class="tpo-table" id="vcp-contractions"></table></div>
       <div class="tpo-meta" id="vcp-base"></div>
 
-      <h2 style="margin-top:14px">Trade Plan <small>· pivot, stop and risk</small></h2>
+      <h2 class="subhead">Trade Plan <small>· pivot, stop and risk</small></h2>
       <div class="decision" id="vcp-plan"></div>
       <div class="tpo-meta" id="vcp-sizing"></div>
 
-      <h2 style="margin-top:14px">Stage &amp; RS Context</h2>
+      <h2 class="subhead">Stage &amp; RS Context</h2>
       <div class="tpo-tablewrap"><table class="tpo-table" id="vcp-context"></table></div>
 
-      <h2 style="margin-top:14px">Final Conclusion</h2>
+      <h2 class="subhead">Final Conclusion</h2>
       <ul class="signals" id="vcp-conclusion"></ul>
     </div>
     <div class="hint" id="vcp-note"></div>
@@ -525,7 +542,7 @@
                aria-autocomplete="list" aria-controls="ew-suggest" />
         <ul class="pat-suggest hidden" id="ew-suggest" role="listbox"></ul>
       </div>
-      <button id="ew-run" class="btn-confirm">Analyze</button>
+      <button id="ew-run" class="btn-confirm primary">Analyze</button>
       <span class="pill" id="ew-src">—</span>
       <span class="grow"></span>
       <span class="pill" id="ew-updated">—</span>
@@ -564,31 +581,31 @@
       </div>
     </details>
 
-    <div id="ew-empty" class="empty">Enter a symbol and press Analyze. The box prefills from your active TradingView chart.</div>
+    <div id="ew-empty" class="empty"><div class="state-block"><div class="sb-icon" aria-hidden="true">◎</div><div class="sb-title">No symbol analysed yet</div><p>Type a symbol above and press <b>Analyze</b>. The box prefills from your active TradingView chart, and the full method is in <b>How this analysis works</b>.</p></div></div>
     <div id="ew-body" class="hidden">
       <h2>Primary Count</h2>
       <div class="decision" id="ew-primary"></div>
       <div class="tpo-meta" id="ew-invalidation"></div>
 
-      <h2 style="margin-top:14px">Wave Structure</h2>
+      <h2 class="subhead">Wave Structure</h2>
       <div class="tpo-tablewrap"><table class="tpo-table" id="ew-waves"></table></div>
 
-      <h2 style="margin-top:14px">Hard Rules <small>· all must hold or the count is discarded</small></h2>
+      <h2 class="subhead">Hard Rules <small>· all must hold or the count is discarded</small></h2>
       <div class="tpo-tablewrap"><table class="tpo-table" id="ew-rules"></table></div>
 
-      <h2 style="margin-top:14px">Fibonacci Projections</h2>
+      <h2 class="subhead">Fibonacci Projections</h2>
       <div class="tpo-tablewrap"><table class="tpo-table" id="ew-projections"></table></div>
 
-      <h2 style="margin-top:14px">Alternate Counts <small>· all rule-valid</small></h2>
+      <h2 class="subhead">Alternate Counts <small>· all rule-valid</small></h2>
       <div class="tpo-tablewrap"><table class="tpo-table" id="ew-alternates"></table></div>
 
-      <h2 style="margin-top:14px">Degree Nesting <small>· Monthly → Weekly → Daily → 4H</small></h2>
+      <h2 class="subhead">Degree Nesting <small>· Monthly → Weekly → Daily → 4H</small></h2>
       <div class="tpo-tablewrap"><table class="tpo-table" id="ew-nesting"></table></div>
 
-      <h2 style="margin-top:14px">Wave Personality Checks</h2>
+      <h2 class="subhead">Wave Personality Checks</h2>
       <div class="tpo-tablewrap"><table class="tpo-table" id="ew-personality"></table></div>
 
-      <h2 style="margin-top:14px">Final Conclusion</h2>
+      <h2 class="subhead">Final Conclusion</h2>
       <ul class="signals" id="ew-conclusion"></ul>
     </div>
     <div class="hint" id="ew-note"></div>
@@ -610,7 +627,7 @@
         <option>Double Bottom</option><option>Inverse Head &amp; Shoulders</option><option>Breakout</option>
         <option>Breakout Retest</option><option>Trend Continuation</option><option>Trend Reversal</option>
       </select></label>
-      <button id="brk-run" class="btn-confirm">Scan</button>
+      <button id="brk-run" class="btn-confirm primary">Scan</button>
       <span class="grow"></span>
       <span class="pill" id="brk-updated">—</span>
     </div>
@@ -667,7 +684,7 @@
       <label class="pill">region <select id="brk2-region"><option value="india" selected>🇮🇳 India (NSE)</option><option value="usa">🇺🇸 USA</option></select></label>
       <label class="pill">timeframe <select id="brk2-tf"><option>4H</option><option selected>1D</option><option>1W</option><option>1M</option></select></label>
       <label class="pill">type <select id="brk2-type"><option value="vcp" selected>VCP (Minervini)</option><option value="elliott">Elliott Wave</option></select></label>
-      <button id="brk2-run" class="btn-confirm">Scan</button>
+      <button id="brk2-run" class="btn-confirm primary">Scan</button>
       <span class="grow"></span>
       <span class="pill" id="brk2-updated">—</span>
     </div>
@@ -726,7 +743,7 @@
                aria-autocomplete="list" aria-controls="cache-suggest" />
         <ul class="pat-suggest hidden" id="cache-suggest" role="listbox"></ul>
       </div>
-      <button id="cache-check" class="btn-confirm">Will this fetch?</button>
+      <button id="cache-check" class="btn-confirm primary">Will this fetch?</button>
       <button id="cache-refresh" class="btn-confirm">Refresh</button>
       <span class="grow"></span>
       <span class="pill" id="cache-updated">—</span>
@@ -755,10 +772,10 @@
     <div class="decision" id="cache-tiles"></div>
     <div class="tpo-meta" id="cache-verdict"></div>
 
-    <h2 style="margin-top:14px">Providers</h2>
+    <h2 class="subhead">Providers</h2>
     <div class="tpo-tablewrap"><table class="tpo-table" id="cache-providers"></table></div>
 
-    <h2 style="margin-top:14px">Cached Symbols <small>· green = analysing costs nothing</small></h2>
+    <h2 class="subhead">Cached Symbols <small>· green = analysing costs nothing</small></h2>
     <div class="tpo-tablewrap"><table class="tpo-table" id="cache-symbols"></table></div>
     <div class="hint" id="cache-note"></div>
   </section>
@@ -789,16 +806,16 @@
       </div>
     </details>
     <div class="tpo-toolbar">
-      <button id="test-refresh" class="btn-confirm">Refresh</button>
+      <button id="test-refresh" class="btn-confirm primary">Refresh</button>
       <button id="test-backtest" class="btn-confirm" title="Replays the most recent plans (config: testing.backtestLimit). Each plan costs one NSE-provider request, so the run is bounded and rate-limited.">Run India 1-min backtest <small>(recent 100)</small></button>
       <span class="pill" id="test-updated">—</span>
     </div>
     <div class="tpo-meta" id="test-gates"></div>
     <div class="decision" id="test-overall"></div>
-    <h2>Breakdown <small>· by market / setup / confidence</small></h2>
+    <h2 class="subhead">Breakdown <small>· by market / setup / confidence</small></h2>
     <div class="tpo-tablewrap"><table class="tpo-table" id="test-breakdown"></table></div>
     <div class="tpo-confirm hidden" id="test-bt"></div>
-    <h2 style="margin-top:12px">Recent journal <small>· last 100 plans</small></h2>
+    <h2 class="subhead">Recent journal <small>· last 100 plans</small></h2>
     <div id="test-filters"></div>
     <div class="tpo-tablewrap">
       <table class="tpo-table"><thead><tr>
@@ -816,20 +833,20 @@
   <section class="card span2">
     <h2>Analytics <small>· Monte Carlo · HMM market regime · robustness — computed from real journal outcomes only</small></h2>
     <div class="tpo-toolbar">
-      <button id="ana-refresh" class="btn-confirm">Refresh</button>
+      <button id="ana-refresh" class="btn-confirm primary">Refresh</button>
       <label class="pill">risk/trade <select id="ana-risk"><option>0.5</option><option selected>1</option><option>2</option></select>%</label>
       <span class="pill" id="ana-updated">—</span>
     </div>
-    <h2>Monte Carlo <small>· 5,000 bootstrap resamples of realized R-multiples</small></h2>
+    <h2 class="subhead">Monte Carlo <small>· 5,000 bootstrap resamples of realized R-multiples</small></h2>
     <div class="decision" id="ana-mc-tiles"></div>
-    <div id="ana-mc-chart"></div>
-    <h2 style="margin-top:14px">Market regime — Hidden Markov Model <small>· Gaussian HMM on NIFTY daily returns (NSE data provider)</small></h2>
+    <div class="chartbox hidden" id="ana-mc-chart"></div>
+    <h2 class="subhead">Market regime — Hidden Markov Model <small>· Gaussian HMM on NIFTY daily returns (NSE data provider)</small></h2>
     <div class="decision" id="ana-hmm-tiles"></div>
     <div class="tpo-tablewrap"><table class="tpo-table" id="ana-hmm-table"></table></div>
-    <h2 style="margin-top:14px">Robustness <small>· expectancy stability &amp; threshold sensitivity</small></h2>
+    <h2 class="subhead">Robustness <small>· expectancy stability &amp; threshold sensitivity</small></h2>
     <div class="decision" id="ana-rob-tiles"></div>
     <div class="tpo-tablewrap"><table class="tpo-table" id="ana-rob-table"></table></div>
-    <div id="ana-rob-chart"></div>
+    <div class="chartbox hidden" id="ana-rob-chart"></div>
     <div class="hint" id="ana-note"></div>
   </section>
 </main>

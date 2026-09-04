@@ -82,6 +82,51 @@ const F = {
   },
 };
 
+
+// ---------- shared presentation helpers ----------
+// One empty/loading/error vocabulary for every tab. Previously each site wrote a
+// bare line of dim 12px text ("Loading…", "Failed: " + msg) that read as a
+// caption rather than a state, and the layout collapsed while data was in
+// flight. A state is a surface: it occupies the space the data will take.
+const esc0 = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function stateBlock({ icon = '·', title, body = '', kind = '', actions = '' }) {
+  return `<div class="state-block ${kind}">`
+    + `<div class="sb-icon" aria-hidden="true">${icon}</div>`
+    + `<div class="sb-title">${title}</div>`
+    + (body ? `<p>${body}</p>` : '')
+    + (actions ? `<div class="sb-actions">${actions}</div>` : '')
+    + `</div>`;
+}
+const emptyRow = (cols, opts) => `<tr><td colspan="${cols}" class="tpo-empty">${stateBlock(opts)}</td></tr>`;
+// Skeleton rows show the shape of the answer while a 3,000-name universe scan
+// runs, instead of blanking the table.
+function skeletonRows(cols, n = 8) {
+  let out = '';
+  for (let i = 0; i < n; i++) {
+    out += '<tr class="skelrow">' + Array.from({ length: cols }, (_, c) =>
+      `<td><span class="skel" style="width:${c === 0 ? 70 : 30 + ((i * 7 + c * 13) % 45)}%"></span></td>`).join('') + '</tr>';
+  }
+  return out;
+}
+// Scan header: label-over-value stats, so "31 setups" outranks "universe 3150".
+// Replaces the flat run of equally-weighted tags the meta line used to print.
+function statStrip(host, stats) {
+  host.innerHTML = stats.filter(Boolean).map(st =>
+    `<div class="stat ${st.cls || ''}">`
+    + `<span class="sk">${esc0(st.k)}</span>`
+    + `<span class="sv ${st.tone || ''}">${st.dot ? '<span class="dot"></span>' : ''}${esc0(st.v)}</span>`
+    + `</div>`).join('');
+}
+// Keeps sticky table headers below the sticky app header rather than under it —
+// `top:0` parked them behind the two header rails.
+function syncStickyTop() {
+  const h = document.querySelector('header');
+  if (h) document.documentElement.style.setProperty('--stick-top', h.offsetHeight + 'px');
+}
+addEventListener('resize', syncStickyTop);
+addEventListener('DOMContentLoaded', syncStickyTop);
+syncStickyTop();
+
 let CONFIG = null, POLL_MS = 7000, timer = null;
 // Symbol under analysis, shared by the three analysis tabs so switching methodology keeps
 // you on the same name (and reuses the server-side history cache). Set only by you.
@@ -130,7 +175,8 @@ function renderHealth(st = {}) {
 function renderSignals(s, chart) {
   const bare = x => String(x || '').split(':').pop().trim().toUpperCase().replace(/\s+/g, '');
   if (!DASHBOARD_SYMBOL) {
-    $('#signal-empty').textContent = 'Enter a symbol above and press Load — the Signal Summary reads that symbol from your TradingView chart.';
+    $('#signal-empty').innerHTML = stateBlock({ icon: '◎', title: 'No symbol loaded',
+      body: 'Type a symbol above and press <b>Load</b>. The Signal Summary reads that exact symbol from your TradingView chart — it deliberately does not follow whichever chart tab happens to be fronted.' });
     $('#signal-empty').classList.remove('hidden'); $('#signal-body').classList.add('hidden');
     return;
   }
@@ -138,7 +184,8 @@ function renderSignals(s, chart) {
   // The chart switcher is best-effort, so never present another symbol's legend as
   // the one you asked for.
   if (chart && bare(chart.symbol) !== bare(DASHBOARD_SYMBOL)) {
-    $('#signal-empty').textContent = `Waiting for TradingView to load ${DASHBOARD_SYMBOL} — the chart currently shows ${chart.symbol || '—'}. Bring a chart tab to the front and press Load again.`;
+    $('#signal-empty').innerHTML = stateBlock({ kind: 'warn', icon: '◔', title: `Waiting for TradingView to load ${esc0(DASHBOARD_SYMBOL)}`,
+      body: `The chart currently shows <b>${esc0(chart.symbol || '—')}</b>. Bring a chart tab to the front and press <b>Load</b> again.` });
     $('#signal-empty').classList.remove('hidden'); $('#signal-body').classList.add('hidden');
     return;
   }
@@ -305,20 +352,39 @@ async function switchSymbol(sym) {
 
     async function scan() {
       const meta = id('meta'), body = id('body'), note = id('note');
-      meta.textContent = 'Scanning…';
-      let r; try { r = await api(endpoint); } catch (e) { meta.textContent = 'Scan failed: ' + e.message; return; }
-      if (r.error) { meta.textContent = 'Scan error: ' + r.error; return; }
-      meta.innerHTML = '';
+      if (!lastRows.length) body.innerHTML = skeletonRows(13);
+      body.parentElement.classList.add('is-busy');
+      statStrip(meta, [{ k: 'status', v: 'scanning…', cls: 'status-delayed' }]);
+      let r;
+      try { r = await api(endpoint); } catch (e) {
+        body.parentElement.classList.remove('is-busy');
+        statStrip(meta, [{ k: 'status', v: 'scan failed', cls: 'status-delayed' }]);
+        body.innerHTML = emptyRow(13, { kind: 'err', icon: '⚠', title: 'Scan request failed', body: esc0(e.message) + ' — the server may not be running. Auto-refresh will retry on the next cycle.' });
+        return;
+      }
+      body.parentElement.classList.remove('is-busy');
+      if (r.error) {
+        statStrip(meta, [{ k: 'status', v: 'scan error', cls: 'status-delayed' }]);
+        body.innerHTML = emptyRow(13, { kind: 'err', icon: '⚠', title: 'Scan error', body: esc0(r.error) });
+        return;
+      }
       const st = r.dataStatus || 'unknown';
-      const stLabel = st === 'live' ? '🟢 LIVE' : st === 'delayed' ? ('🔴 delayed' + (r.delayMin ? ' ~' + r.delayMin + 'm' : '')) : st === 'closed' ? '⚪ market closed' : 'status —';
-      meta.append(el('span', 'tag status-' + st, stLabel));
-      const tag = (k, v) => meta.append(el('span', 'tag', `${k} <b>${v}</b>`));
-      tag('universe', r.universe);
-      if (r.indexChangePct != null) tag(r.indexLabel || 'index', (r.indexChangePct >= 0 ? '+' : '') + r.indexChangePct + '%');
-      tag('setups', r.count);
-      if (r.session && r.session.minsToClose != null) tag('to close', r.session.minsToClose + 'm');
-      tag('updated', new Date(r.ts).toLocaleTimeString());
-      lastRows = r.rows || [];
+      const stLabel = st === 'live' ? 'LIVE' : st === 'delayed' ? ('DELAYED' + (r.delayMin ? ' ~' + r.delayMin + 'm' : '')) : st === 'closed' ? 'MARKET CLOSED' : '—';
+      const rows0 = r.rows || [];
+      // The two numbers a trader acts on lead the strip; context follows.
+      const actionable = rows0.filter(x => x.state === 'VALID' || x.state === 'ARMED').length;
+      const longs = rows0.filter(x => x.signal === 'LONG').length;
+      statStrip(meta, [
+        { k: 'feed', v: stLabel, cls: 'status-' + st, dot: true },
+        { k: 'setups', v: r.count },
+        { k: 'actionable', v: actionable, tone: actionable ? 'up' : 'mut' },
+        { k: 'long / short', v: longs + ' / ' + (rows0.length - longs) },
+        r.indexChangePct != null && { k: r.indexLabel || 'index', v: (r.indexChangePct >= 0 ? '+' : '') + r.indexChangePct + '%', tone: r.indexChangePct >= 0 ? 'up' : 'down' },
+        { k: 'universe', v: r.universe, tone: 'mut' },
+        r.session && r.session.minsToClose != null && { k: 'to close', v: r.session.minsToClose + 'm', tone: 'mut' },
+        { k: 'updated', v: new Date(r.ts).toLocaleTimeString(), tone: 'mut', cls: 'grow' },
+      ]);
+      lastRows = rows0;
       note.textContent = r.note || '';
       paintRows();
     }
@@ -330,13 +396,15 @@ async function switchSymbol(sym) {
       const total = lastRows.length;
       if (!total) {
         if (filterBar) filterBar.setCount(0, 0);
-        body.innerHTML = `<tr><td colspan="13" class="tpo-empty">No high-quality setups right now (or market closed). Thresholds live in config/markets.json → tpo.</td></tr>`;
+        body.innerHTML = emptyRow(13, { icon: '○', title: 'No high-quality setups right now',
+          body: 'Either nothing clears the conviction, R:R and rVol thresholds, or the market is closed. An empty table is an honest answer — thresholds live in <code>config/markets.json → tpo</code>.' });
         return;
       }
       const rows = filterBar ? filterBar.apply(lastRows) : lastRows;
       if (filterBar) filterBar.setCount(rows.length, total);
       if (!rows.length) {
-        body.innerHTML = `<tr><td colspan="13" class="tpo-empty">All ${total} setup(s) are hidden by your filters — press Reset to see them.</td></tr>`;
+        body.innerHTML = emptyRow(13, { icon: '⊘', kind: 'warn', title: `All ${total} setups are hidden by your filters`,
+          body: 'Press <b>Reset</b> on the filter bar above to see them again.' });
         return;
       }
       body.innerHTML = '';
@@ -356,7 +424,7 @@ async function switchSymbol(sym) {
           <td class="num rr">${x.rr}</td>
           <td class="num"><span class="eq ${x.entryQuality >= 65 ? 'good' : x.entryQuality < 45 ? 'low' : ''}">${x.entryQuality ?? '—'}</span></td>
           <td><span class="conf ${x.confidence}">${x.confidence} · ${x.score}</span></td>
-          <td class="reason">${x.reason}</td>`;
+          <td class="reason" title="${String(x.reason || '').replace(/"/g, '&quot;')}"><span class="clamp">${x.reason}</span></td>`;
         const td = el('td'), b = el('button', 'btn-confirm', 'Confirm');
         b.title = 'Load on chart & read live on-chart levels + real circuit';
         b.addEventListener('click', () => confirm(x, b));
@@ -436,7 +504,9 @@ async function switchSymbol(sym) {
         <td class="num">${t.rr}</td><td class="num">${fmt(t.entryQuality)}</td>
         <td>${t.status}</td><td>${t.outcome || (t.status === 'MISSED' ? 'never filled' : '—')}</td>
         <td class="num ${t.rMultiple > 0 ? 'rr' : ''}">${t.rMultiple != null ? (t.rMultiple > 0 ? '+' : '') + t.rMultiple : '—'}</td></tr>`).join('')
-        || `<tr><td colspan="13" class="tpo-empty">${lastRecent.length ? 'All ' + lastRecent.length + ' plan(s) are hidden by your filters — press Reset to see them.' : 'No journaled plans yet.'}</td></tr>`;
+        || (lastRecent.length
+          ? emptyRow(13, { icon: '⊘', kind: 'warn', title: `All ${lastRecent.length} plans are hidden by your filters`, body: 'Press <b>Reset</b> on the filter bar above to see them again.' })
+          : emptyRow(13, { icon: '○', title: 'No journaled plans yet', body: 'Plans record automatically while the TPO scanners run during market hours.' }));
     }
     const gateTag = (name, g) => {
       const cls = g.pass === true ? 'status-live' : g.pass === false ? 'status-delayed' : 'status-closed';
@@ -444,7 +514,11 @@ async function switchSymbol(sym) {
       return `<span class="tag ${cls}">${name} ${fmt(g.value)} / ${g.target} · <b>${verdict}</b></span>`;
     };
     async function refresh() {
-      let r; try { r = await api('/api/test/summary'); } catch (e) { $('#test-note').textContent = 'Failed: ' + e.message; return; }
+      let r; try { r = await api('/api/test/summary'); } catch (e) {
+        $('#test-note').innerHTML = stateBlock({ kind: 'err', icon: '⚠', title: 'Could not load the journal', body: esc0(e.message) });
+        return;
+      }
+      $('#test-note').innerHTML = '';
       $('#test-updated').textContent = 'updated ' + new Date(r.ts).toLocaleTimeString();
       const g = r.gates;
       $('#test-gates').innerHTML =
@@ -469,7 +543,7 @@ async function switchSymbol(sym) {
             `<tr><td>${k}</td><td class="num">${s.trades}</td><td class="num">${fmt(s.profitFactor)}</td><td class="num">${fmt(s.winRate)}</td><td class="num">${fmt(s.expectancyR)}</td><td class="num">${s.missed}</td></tr>`).join('')
         : '';
       bd.innerHTML = section('By market', r.byMarket) + section('By setup', r.bySetup) + section('By confidence', r.byConfidence)
-        || '<tr><td class="tpo-empty">Journal empty — plans record automatically while the TPO scanners run during market hours.</td></tr>';
+        || emptyRow(1, { icon: '○', title: 'Journal empty', body: 'Plans record automatically while the TPO scanners run during market hours.' });
       // recent journal (filtered client-side; gates/summary/breakdown above are untouched)
       lastRecent = r.recent || [];
       paintRecent();
@@ -522,6 +596,7 @@ async function switchSymbol(sym) {
   function makeAnalytics() {
     const fmt = x => x == null ? '—' : x;
     const tile = (parent, k, v, cls) => { const t = el('div', 'dtile' + (cls ? ' ' + cls : '')); t.append(el('div', 'dk', k), el('div', 'dv', String(fmt(v)))); parent.append(t); };
+    const setChart = (host, svg) => { host.innerHTML = svg; host.classList.toggle('hidden', !svg); };
     function mcSvg(mc) {
       if (!mc.ok) return '';
       const W = 720, H = 220, P = 30;
@@ -532,12 +607,12 @@ async function switchSymbol(sym) {
       const line = b => b.map((v, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join('');
       const area = (top, bot) => line(top) + bot.map((v, i) => `L${X(bot.length - 1 - i).toFixed(1)},${Y(bot[bot.length - 1 - i]).toFixed(1)}`).join('') + 'Z';
       return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${W}px">
-        <line x1="${P}" y1="${Y(0)}" x2="${W - P}" y2="${Y(0)}" stroke="#39424e" stroke-dasharray="4 4"/>
-        <path d="${area(mc.bands.p95, mc.bands.p5)}" fill="#4c8dff18" stroke="none"/>
-        <path d="${area(mc.bands.p75, mc.bands.p25)}" fill="#4c8dff2e" stroke="none"/>
-        <path d="${line(mc.bands.p50)}" fill="none" stroke="#4c8dff" stroke-width="2"/>
-        <text x="${P}" y="14" fill="#8b95a3" font-size="11">Bootstrapped equity (R) — ${mc.runs} runs × ${mc.steps} trades · bands p5–p95 / p25–p75 / median</text>
-        <text x="${P}" y="${Y(0) - 4}" fill="#8b95a3" font-size="10">0R</text>
+        <line x1="${P}" y1="${Y(0)}" x2="${W - P}" y2="${Y(0)}" stroke="var(--line)" stroke-dasharray="4 4"/>
+        <path d="${area(mc.bands.p95, mc.bands.p5)}" fill="color-mix(in srgb, var(--acc) 12%, transparent)" stroke="none"/>
+        <path d="${area(mc.bands.p75, mc.bands.p25)}" fill="color-mix(in srgb, var(--acc) 22%, transparent)" stroke="none"/>
+        <path d="${line(mc.bands.p50)}" fill="none" stroke="var(--acc)" stroke-width="2"/>
+        <text x="${P}" y="14" fill="var(--mut)" font-size="11">Bootstrapped equity (R) — ${mc.runs} runs × ${mc.steps} trades · bands p5–p95 / p25–p75 / median</text>
+        <text x="${P}" y="${Y(0) - 4}" fill="var(--mut)" font-size="10">0R</text>
       </svg>`;
     }
     function sparkline(vals) {
@@ -548,15 +623,19 @@ async function switchSymbol(sym) {
       const X = i => P + (W - 2 * P) * i / (v.length - 1);
       const Y = x => H - P - (H - 2 * P) * (x - lo) / (hi - lo || 1);
       return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${W}px">
-        <line x1="${P}" y1="${Y(1.5)}" x2="${W - P}" y2="${Y(1.5)}" stroke="#3a5f46" stroke-dasharray="3 4"/>
-        <path d="${v.map((x, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)},${Y(x).toFixed(1)}`).join('')}" fill="none" stroke="#57c99b" stroke-width="2"/>
-        <text x="${P}" y="12" fill="#8b95a3" font-size="11">Rolling Profit Factor (20-trade window) — dashed line = 1.5 gate</text>
+        <line x1="${P}" y1="${Y(1.5)}" x2="${W - P}" y2="${Y(1.5)}" stroke="var(--grn-line)" stroke-dasharray="3 4"/>
+        <path d="${v.map((x, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)},${Y(x).toFixed(1)}`).join('')}" fill="none" stroke="var(--grn)" stroke-width="2"/>
+        <text x="${P}" y="12" fill="var(--mut)" font-size="11">Rolling Profit Factor (20-trade window) — dashed line = 1.5 gate</text>
       </svg>`;
     }
     async function refresh() {
       const risk = $('#ana-risk').value;
       $('#ana-updated').textContent = 'computing…';
-      let r; try { r = await api('/api/analytics?riskPct=' + risk); } catch (e) { $('#ana-note').textContent = 'Failed: ' + e.message; return; }
+      let r; try { r = await api('/api/analytics?riskPct=' + risk); } catch (e) {
+        $('#ana-note').innerHTML = stateBlock({ kind: 'err', icon: '⚠', title: 'Could not compute analytics', body: esc0(e.message) });
+        return;
+      }
+      $('#ana-note').innerHTML = '';
       $('#ana-updated').textContent = 'updated ' + new Date(r.ts).toLocaleTimeString();
       // Monte Carlo
       const mt = $('#ana-mc-tiles'); mt.innerHTML = '';
@@ -568,8 +647,12 @@ async function switchSymbol(sym) {
         tile(mt, 'Max DD (median)', mc.maxDD_R.p50 + 'R');
         tile(mt, 'Max DD (p95)', mc.maxDD_R.p95 + 'R', 'warn');
         tile(mt, `Risk of ruin @ ${mc.riskPct}%/trade`, mc.riskOfRuinPct + '%', mc.riskOfRuinPct > 5 ? 'bad' : 'good');
-        $('#ana-mc-chart').innerHTML = mcSvg(mc);
-      } else { tile(mt, 'Monte Carlo', `insufficient sample (${mc.n}/${mc.need} closed trades)`, 'warn'); $('#ana-mc-chart').innerHTML = ''; }
+        setChart($('#ana-mc-chart'), mcSvg(mc));
+      } else {
+        mt.innerHTML = stateBlock({ kind: 'warn', icon: '◔', title: 'Not enough closed trades yet',
+          body: `Monte Carlo needs <b>${mc.need}</b> closed trades and the journal has <b>${mc.n}</b>. Outcomes accrue as scanner plans fill and resolve — nothing here is simulated.` });
+        setChart($('#ana-mc-chart'), '');
+      }
       // HMM
       const ht = $('#ana-hmm-tiles'); ht.innerHTML = '';
       const hm = r.regime, htab = $('#ana-hmm-table');
@@ -579,9 +662,13 @@ async function switchSymbol(sym) {
         htab.innerHTML = `<tr><th>Regime</th><th class="num">μ daily%</th><th class="num">σ daily%</th><th class="num">stickiness</th><th class="num">your n</th><th class="num">PF</th><th class="num">WR%</th><th class="num">Exp R</th></tr>`
           + hm.states.map(s => {
             const p = hm.perRegime[s.label] || {};
-            return `<tr${s.state === hm.current.state ? ' style="outline:1px solid #4c8dff55"' : ''}><td>${s.label}</td><td class="num">${s.meanDailyPct}</td><td class="num">${s.sdDailyPct}</td><td class="num">${s.stickiness}</td><td class="num">${fmt(p.n)}</td><td class="num">${fmt(p.pf)}</td><td class="num">${fmt(p.wr)}</td><td class="num">${fmt(p.expR)}</td></tr>`;
+            return `<tr${s.state === hm.current.state ? ' aria-selected="true"' : ''}><td>${s.label}</td><td class="num">${s.meanDailyPct}</td><td class="num">${s.sdDailyPct}</td><td class="num">${s.stickiness}</td><td class="num">${fmt(p.n)}</td><td class="num">${fmt(p.pf)}</td><td class="num">${fmt(p.wr)}</td><td class="num">${fmt(p.expR)}</td></tr>`;
           }).join('');
-      } else { tile(ht, 'HMM regime', hm.error, 'warn'); htab.innerHTML = ''; }
+      } else {
+        ht.innerHTML = stateBlock({ kind: 'warn', icon: '◔', title: 'Market regime unavailable',
+          body: esc0(hm.error) });
+        htab.innerHTML = '';
+      }
       // Robustness
       const rt = $('#ana-rob-tiles'); rt.innerHTML = '';
       const rb = r.robustness, rtab = $('#ana-rob-table');
@@ -591,8 +678,12 @@ async function switchSymbol(sym) {
         tile(rt, 'SQN', rb.sqn, rb.sqn >= 2 ? 'good' : rb.sqn < 1 ? 'warn' : '');
         rtab.innerHTML = `<tr><th>Threshold sensitivity</th><th class="num">n</th><th class="num">PF</th><th class="num">WR%</th><th class="num">Exp R</th></tr>`
           + rb.sensitivity.map(s => `<tr><td>${s.cut}</td><td class="num">${s.n}</td><td class="num">${fmt(s.pf)}</td><td class="num">${fmt(s.wr)}</td><td class="num">${fmt(s.expR)}</td></tr>`).join('');
-        $('#ana-rob-chart').innerHTML = sparkline(rb.rollingPF || []);
-      } else { tile(rt, 'Robustness', `insufficient sample (${rb.n}/${rb.need} closed trades)`, 'warn'); rtab.innerHTML = ''; $('#ana-rob-chart').innerHTML = ''; }
+        setChart($('#ana-rob-chart'), sparkline(rb.rollingPF || []));
+      } else {
+        rt.innerHTML = stateBlock({ kind: 'warn', icon: '◔', title: 'Not enough closed trades yet',
+          body: `Robustness needs <b>${rb.need}</b> closed trades and the journal has <b>${rb.n}</b>.` });
+        rtab.innerHTML = ''; setChart($('#ana-rob-chart'), '');
+      }
       $('#ana-note').textContent = 'All analytics derive from the Testing journal’s real outcomes (and real NIFTY history for the regime model). A robust edge: expectancy CI above 0, SQN ≥ 2, PF stable across thresholds and regimes.';
     }
     let wired = false;
@@ -684,7 +775,10 @@ async function switchSymbol(sym) {
       if (!sym || busy) return;
       SELECTED_SYMBOL = sym;
       busy = true;
-      $('#pat-note').textContent = `Fetching 4H / Daily / Weekly / Monthly history for ${sym}…`;
+      $('#pat-body').classList.add('hidden');
+      $('#pat-empty').classList.remove('hidden');
+      $('#pat-empty').innerHTML = stateBlock({ icon: '◍', title: `Analysing ${esc0(sym)}…`, body: 'Fetching 4H / Daily / Weekly / Monthly history.' });
+      $('#pat-note').textContent = '';
       let r;
       try { r = await api('/api/patterns?symbol=' + encodeURIComponent(sym)); }
       catch (e) { r = { ok: false, error: e.message }; }
@@ -693,7 +787,8 @@ async function switchSymbol(sym) {
       if (!r || !r.ok) {
         $('#pat-body').classList.add('hidden');
         $('#pat-empty').classList.remove('hidden');
-        $('#pat-empty').textContent = `No analysis for ${sym} — ${r?.error || 'request failed'}`;
+        $('#pat-empty').innerHTML = stateBlock({ kind: 'err', icon: '⚠',
+          title: `Could not analyse ${esc0(sym)}`, body: esc0(r?.error || 'request failed') });
         $('#pat-src').textContent = '—'; $('#pat-note').textContent = '';
         return;
       }
@@ -792,7 +887,10 @@ async function switchSymbol(sym) {
       if (!sym || busy) return;
       SELECTED_SYMBOL = sym;
       busy = true;
-      $('#vcp-note').textContent = `Fetching history and ranking ${sym} against its market\u2026`;
+      $('#vcp-body').classList.add('hidden');
+      $('#vcp-empty').classList.remove('hidden');
+      $('#vcp-empty').innerHTML = stateBlock({ icon: '◍', title: `Analysing ${esc0(sym)}…`, body: 'Fetching history and ranking it against its market.' });
+      $('#vcp-note').textContent = '';
       let r;
       try { r = await api('/api/vcp?symbol=' + encodeURIComponent(sym)); }
       catch (e) { r = { ok: false, error: e.message }; }
@@ -801,7 +899,8 @@ async function switchSymbol(sym) {
       if (!r || !r.ok) {
         $('#vcp-body').classList.add('hidden');
         $('#vcp-empty').classList.remove('hidden');
-        $('#vcp-empty').textContent = `No VCP analysis for ${sym} \u2014 ${r?.error || 'request failed'}`;
+        $('#vcp-empty').innerHTML = stateBlock({ kind: 'err', icon: '⚠',
+          title: `Could not analyse ${esc0(sym)}`, body: esc0(r?.error || 'request failed') });
         $('#vcp-src').textContent = '\u2014'; $('#vcp-note').textContent = '';
         return;
       }
@@ -915,7 +1014,10 @@ async function switchSymbol(sym) {
       if (!sym || busy) return;
       SELECTED_SYMBOL = sym;
       busy = true;
-      $('#ew-note').textContent = `Counting waves for ${sym} across four degrees\u2026`;
+      $('#ew-body').classList.add('hidden');
+      $('#ew-empty').classList.remove('hidden');
+      $('#ew-empty').innerHTML = stateBlock({ icon: '◍', title: `Analysing ${esc0(sym)}…`, body: 'Counting waves across four degrees.' });
+      $('#ew-note').textContent = '';
       let r;
       try { r = await api('/api/elliott?symbol=' + encodeURIComponent(sym)); }
       catch (e) { r = { ok: false, error: e.message }; }
@@ -924,7 +1026,8 @@ async function switchSymbol(sym) {
       if (!r || !r.ok) {
         $('#ew-body').classList.add('hidden');
         $('#ew-empty').classList.remove('hidden');
-        $('#ew-empty').textContent = `No wave analysis for ${sym} \u2014 ${r?.error || 'request failed'}`;
+        $('#ew-empty').innerHTML = stateBlock({ kind: 'err', icon: '⚠',
+          title: `Could not analyse ${esc0(sym)}`, body: esc0(r?.error || 'request failed') });
         $('#ew-src').textContent = '\u2014'; $('#ew-note').textContent = '';
         return;
       }
@@ -1064,8 +1167,12 @@ async function switchSymbol(sym) {
       const title = x.readinessScore != null ? `breakout readiness ${x.readinessScore}/100` : '';
       return `<td><span class="tier ${cls}" title="${title}">${label}</span></td>`;
     };
-    const whyCell = x => `<td class="reason">${esc(x.detail)}${x.qualifyReasons?.length
-      ? `<div class="why">${x.qualifyReasons.map(esc).join(' · ')}</div>` : ''}</td>`;
+    const whyCell = x => {
+      const extra = x.qualifyReasons?.length ? x.qualifyReasons.join(' · ') : '';
+      return `<td class="reason" title="${esc([x.detail, extra].filter(Boolean).join(' — ')).replace(/"/g, '&quot;')}">`
+        + `<span class="clamp">${esc(x.detail)}</span>`
+        + (extra ? `<span class="why clamp">${esc(extra)}</span>` : '') + `</td>`;
+    };
 
     function query() {
       const p = new URLSearchParams({ region: id('region').value, tf: id('tf').value });
@@ -1078,39 +1185,61 @@ async function switchSymbol(sym) {
       if (busy) return;
       busy = true;
       const meta = id('meta'), body = id('body');
+      meta.className = 'tpo-meta';
       meta.textContent = 'Stage 1: screening the universe… Stage 2 then fetches real OHLC for the shortlist (this can take a minute).';
-      body.innerHTML = '';
+      id('note').innerHTML = ''; id('skipped').innerHTML = '';
+      body.innerHTML = skeletonRows(cols, 6);
+      body.parentElement.classList.add('is-busy');
       let r;
       try { r = await api(query()); } catch (e) { r = { ok: false, error: e.message }; }
       busy = false;
+      body.parentElement.classList.remove('is-busy');
       id('updated').textContent = 'updated ' + new Date().toLocaleTimeString();
-      if (!r || !r.ok) { meta.innerHTML = `<span class="tag status-delayed">Scan failed — ${esc(r?.error || 'request failed')}</span>`; return; }
+      if (!r || !r.ok) {
+        meta.className = 'tpo-meta';
+        meta.innerHTML = '';
+        id('body').innerHTML = emptyRow(cols, { kind: 'err', icon: '⚠', title: 'Scan failed', body: esc(r?.error || 'request failed') });
+        return;
+      }
 
-      meta.innerHTML = '';
+      // Same stat-strip grammar as the TPO scanners, so a trader reads both
+      // tabs the same way instead of relearning a flat row of equal-weight tags.
       const st = r.dataStatus || 'unknown';
-      meta.append(el('span', 'tag status-' + st, st === 'live' ? '🟢 LIVE' : st === 'delayed' ? '🔴 delayed' : st === 'closed' ? '⚪ market closed' : 'status —'));
-      const tag = (k, v, cls) => meta.append(el('span', 'tag' + (cls ? ' ' + cls : ''), `${k} <b>${v}</b>`));
-      tag('region', r.marketLabel);
-      tag('timeframe', r.timeframe + (r.timeframe !== r.requestedTimeframe ? ` · ${r.requestedTimeframe} not applicable to this engine` : ''));
-      if (mode === 'patterns') tag('pattern', r.patternType === 'all' ? 'all bullish' : r.patternType);
-      tag('universe', r.universe);
-      tag('in uptrend near highs', r.prefiltered);
-      tag('deep-analysed', `${r.analysed} / ${r.candidates}`);
-      tag('candidates found', r.count, r.count ? 'status-live' : '');
       const tc = r.tierCounts || {};
-      if (tc.CONFIRMED) tag('confirmed', tc.CONFIRMED, 'status-live');
-      if (tc['PRE-BREAKOUT']) tag('pre-breakout', tc['PRE-BREAKOUT'], 'status-live');
-      if (tc.WATCH) tag('watch', tc.WATCH);
-      if (r.cached) tag('cache', '10-min result');
-      if (r.stoppedEarly) meta.append(el('span', 'tag status-delayed', esc(r.stoppedEarly)));
+      const found = r.count;
+      meta.className = 'statstrip';
+      statStrip(meta, [
+        { k: 'feed', v: st === 'live' ? 'LIVE' : st === 'delayed' ? 'DELAYED' : st === 'closed' ? 'MARKET CLOSED' : '—', cls: 'status-' + st, dot: true },
+        { k: 'found', v: found, tone: found ? 'up' : 'mut' },
+        tc.CONFIRMED ? { k: 'confirmed', v: tc.CONFIRMED, tone: 'up' } : null,
+        tc['PRE-BREAKOUT'] ? { k: 'pre-breakout', v: tc['PRE-BREAKOUT'] } : null,
+        tc.WATCH ? { k: 'watch', v: tc.WATCH, tone: 'mut' } : null,
+        { k: 'region', v: r.marketLabel, tone: 'mut' },
+        { k: 'timeframe', v: r.timeframe, tone: 'mut' },
+        mode === 'patterns' ? { k: 'pattern', v: r.patternType === 'all' ? 'all bullish' : r.patternType, tone: 'mut' } : null,
+        { k: 'near highs', v: `${r.prefiltered} / ${r.universe}`, tone: 'mut' },
+        { k: 'deep-analysed', v: `${r.analysed} / ${r.candidates}`, tone: 'mut' },
+        r.cached ? { k: 'source', v: '10-min cache', tone: 'mut' } : null,
+        { k: '', v: '', cls: 'grow' },
+      ]);
+      // Caveats that do not belong in a stat cell keep their own honest line.
+      const caveats = [
+        r.timeframe !== r.requestedTimeframe ? `${r.requestedTimeframe} is not applicable to this engine — showing ${r.timeframe}.` : '',
+        r.stoppedEarly ? esc(r.stoppedEarly) : '',
+      ].filter(Boolean);
+      id('note').innerHTML = caveats.length
+        ? stateBlock({ kind: 'warn', icon: '⚠', title: 'Partial result', body: caveats.join(' ') }) : '';
 
       lastRows = r.rows || [];
       lastThresholds = r.thresholds;
       paintRows();
 
+      // The Stage-2 rejection list can run to a dozen repeated sentences; a
+      // collapsed, capped region keeps it available without burying the table.
       id('skipped').innerHTML = r.skipped?.length
-        ? `<span class="tag">rejected in Stage 2 — ${r.skipped.map(esc).join(' · ')}</span>` : '';
-      id('note').textContent = r.note || '';
+        ? `<details class="tpo-how skiplist"><summary>${r.skipped.length} candidate(s) rejected in Stage 2</summary>`
+          + `<div class="tpo-how-body"><ul>${r.skipped.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div></details>` : '';
+      if (r.note) id('note').insertAdjacentHTML('beforeend', `<p class="hint">${esc(r.note)}</p>`);
     }
 
     // Repaint the shortlist through the client filter without re-scanning.
@@ -1119,13 +1248,15 @@ async function switchSymbol(sym) {
       const total = lastRows.length;
       if (!total) {
         if (filterBar) filterBar.setCount(0, 0);
-        body.innerHTML = `<tr><td colspan="${cols}" class="tpo-empty">Nothing within ${lastThresholds?.maxDistPct}% of a breakout level in this selection — an empty table is an honest answer. Widen the timeframe or raise <code>breakouts.candidates</code> in config/markets.json.</td></tr>`;
+        body.innerHTML = emptyRow(cols, { icon: '○', title: 'Nothing close to a breakout in this selection',
+          body: `No candidate sits within ${lastThresholds?.maxDistPct}% of its level — an empty table is an honest answer. Widen the timeframe, or raise <code>breakouts.candidates</code> in <code>config/markets.json</code>.` });
         return;
       }
       const rows = filterBar ? filterBar.apply(lastRows) : lastRows;
       if (filterBar) filterBar.setCount(rows.length, total);
       if (!rows.length) {
-        body.innerHTML = `<tr><td colspan="${cols}" class="tpo-empty">All ${total} candidate(s) are hidden by your filters — press Reset to see them.</td></tr>`;
+        body.innerHTML = emptyRow(cols, { icon: '⊘', kind: 'warn', title: `All ${total} candidates are hidden by your filters`,
+          body: 'Press <b>Reset</b> on the filter bar above to see them again.' });
         return;
       }
       if (mode === 'patterns') {
