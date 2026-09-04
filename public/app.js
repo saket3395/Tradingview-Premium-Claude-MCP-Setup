@@ -97,7 +97,7 @@ function stateBlock({ icon = '·', title, body = '', kind = '', actions = '' }) 
     + (actions ? `<div class="sb-actions">${actions}</div>` : '')
     + `</div>`;
 }
-const emptyRow = (cols, opts) => `<tr><td colspan="${cols}" class="tpo-empty">${stateBlock(opts)}</td></tr>`;
+const emptyRow = (cols, opts) => `<tr><td colspan="${cols}" class="table-state">${stateBlock(opts)}</td></tr>`;
 // Skeleton rows show the shape of the answer while a 3,000-name universe scan
 // runs, instead of blanking the table.
 function skeletonRows(cols, n = 8) {
@@ -117,6 +117,30 @@ function statStrip(host, stats) {
     + `<span class="sv ${st.tone || ''}">${st.dot ? '<span class="dot"></span>' : ''}${esc0(st.v)}</span>`
     + `</div>`).join('');
 }
+// Theme. Dark is the product's identity and stays the default — the OS
+// preference is deliberately not consulted, so a light-mode desktop never
+// repaints a trading terminal without the trader asking for it. The choice is
+// per browser and applied before first paint by the inline bootstrap in <head>.
+function applyTheme(mode) {
+  // Suppress the 120ms colour transitions for the flip itself — otherwise every
+  // row, badge and button cross-fades independently and the swap looks like a
+  // repaint bug rather than a mode change.
+  const r = document.documentElement;
+  r.classList.add('theme-switching');
+  requestAnimationFrame(() => requestAnimationFrame(() => r.classList.remove('theme-switching')));
+  r.dataset.theme = mode;
+  try { localStorage.setItem('theme', mode); } catch {}
+  const b = document.getElementById('theme');
+  if (b) b.setAttribute('aria-label', mode === 'light' ? 'Switch to dark' : 'Switch to light');
+}
+addEventListener('DOMContentLoaded', () => {
+  const b = document.getElementById('theme');
+  if (!b) return;
+  applyTheme(document.documentElement.dataset.theme === 'light' ? 'light' : 'dark');
+  b.addEventListener('click', () =>
+    applyTheme(document.documentElement.dataset.theme === 'light' ? 'dark' : 'light'));
+});
+
 // Keeps sticky table headers below the sticky app header rather than under it —
 // `top:0` parked them behind the two header rails.
 function syncStickyTop() {
@@ -1185,7 +1209,7 @@ async function switchSymbol(sym) {
       if (busy) return;
       busy = true;
       const meta = id('meta'), body = id('body');
-      meta.className = 'tpo-meta';
+      meta.className = 'metaline';
       meta.textContent = 'Stage 1: screening the universe… Stage 2 then fetches real OHLC for the shortlist (this can take a minute).';
       id('note').innerHTML = ''; id('skipped').innerHTML = '';
       body.innerHTML = skeletonRows(cols, 6);
@@ -1196,7 +1220,7 @@ async function switchSymbol(sym) {
       body.parentElement.classList.remove('is-busy');
       id('updated').textContent = 'updated ' + new Date().toLocaleTimeString();
       if (!r || !r.ok) {
-        meta.className = 'tpo-meta';
+        meta.className = 'metaline';
         meta.innerHTML = '';
         id('body').innerHTML = emptyRow(cols, { kind: 'err', icon: '⚠', title: 'Scan failed', body: esc(r?.error || 'request failed') });
         return;
@@ -1237,8 +1261,8 @@ async function switchSymbol(sym) {
       // The Stage-2 rejection list can run to a dozen repeated sentences; a
       // collapsed, capped region keeps it available without burying the table.
       id('skipped').innerHTML = r.skipped?.length
-        ? `<details class="tpo-how skiplist"><summary>${r.skipped.length} candidate(s) rejected in Stage 2</summary>`
-          + `<div class="tpo-how-body"><ul>${r.skipped.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div></details>` : '';
+        ? `<details class="disclosure skiplist"><summary>${r.skipped.length} candidate(s) rejected in Stage 2</summary>`
+          + `<div class="disclosure-body"><ul>${r.skipped.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div></details>` : '';
       if (r.note) id('note').insertAdjacentHTML('beforeend', `<p class="hint">${esc(r.note)}</p>`);
     }
 

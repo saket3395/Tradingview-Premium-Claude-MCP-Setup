@@ -33,8 +33,24 @@
   --red-fill:#2a1716; --red-line:#3b2422;
   --amb-fill:#2a2410; --amb-line:#3a3115;
   --acc-fill:#1c2740; --acc-line:#1e3050;
-  --teal-fill:#122a2a;
+  /* Blue is the darkest of the four signal hues, and #3b82f6 label text on the
+     #1c2740 fill measures 4.04:1 — below the AA floor DESIGN.md itself sets. The
+     interactive hue is unchanged everywhere it carries meaning (focus rings,
+     borders, links); only the label *inside* an accent fill is lifted, to 5.2:1. */
+  --acc-on-fill:#5c98f8;
+  --teal-fill:#122a2a; --teal-line:#1e3a38;
   --neu-fill:#20242c; --neu-line:var(--line);
+  --zebra:#12171f;       /* even data row */
+
+  /* --- control faces (buttons) --- */
+  --ctl:#1f2733; --ctl-hover:#242e3c; --ctl-active:#1a222d;
+  --ctl-primary-fg:#cfe0ff; --ctl-primary-hover:#233151;
+
+  /* --- incidental surfaces --- */
+  --code-fg:#cfe3ff;
+  --skel-hi:#161d27;
+  --scroll-thumb:#2c343d; --scroll-thumb-hover:#3a444f;
+  --overlay-shadow:#000a;
 
   /* --- spacing scale --- */
   --s1:4px; --s2:6px; --s3:8px; --s4:12px; --s5:16px; --s6:24px;
@@ -64,6 +80,48 @@
   accent-color:var(--acc);
 }
 
+/* ------------------------------------------------------- 1b. light theme */
+/* Opt-in, not automatic. DESIGN.md's north star is a dark terminal, so the OS
+   preference does not silently repaint the product; `data-theme="light"` (set by
+   the header toggle, persisted per browser) does. Only tokens are redefined —
+   no component rule knows a theme exists, which is the whole point of the token
+   layer. Signal hues are darkened for AA contrast on light surfaces: #26a17b
+   green reads at 2.4:1 on white and would fail as text. */
+:root[data-theme="light"]{
+  color-scheme:light;
+
+  --bg:#eef1f5; --card:#ffffff; --inset:#f4f6f9; --well:#e9edf2;
+  --line:#d3d9e2; --line-soft:#e6eaf0;
+  --txt:#151b23; --mut:#5a6674; --dim:#8a95a3;
+
+  --grn:#0d7a56; --red:#c0332b; --amb:#8a6206; --acc:#1c5ed6; --teal:#0f766e;
+  --grn-fill:#e2f4ec; --grn-line:#a5d9c4;
+  --red-fill:#fdebe9; --red-line:#f3b5b0;
+  --amb-fill:#fdf2d9; --amb-line:#e3cb8c;
+  --acc-fill:#e6eefb; --acc-line:#b2c9f0; --acc-on-fill:#1a56c4;
+  --teal-fill:#dff2f0; --teal-line:#9fd3ce;
+  --neu-fill:#eef1f5; --neu-line:var(--line);
+  --zebra:#f8fafc;
+
+  --ctl:#ffffff; --ctl-hover:#f1f4f8; --ctl-active:#e5eaf1;
+  --ctl-primary-fg:#12448f; --ctl-primary-hover:#d8e5fa;
+
+  --code-fg:#1b4a9c;
+  --skel-hi:#e9edf3;
+  --scroll-thumb:#c2cad6; --scroll-thumb-hover:#a8b3c2;
+  --overlay-shadow:#0f172a26;
+}
+
+:root.theme-switching *,:root.theme-switching *::before,:root.theme-switching *::after{
+  transition:none !important;
+}
+
+/* Theme toggle: a status-rail pill that shows the mode you would switch *to*. */
+.themebtn{width:var(--ctl-h);padding:0;font-size:13px;line-height:1}
+.themebtn .t-dark{display:none}
+:root[data-theme="light"] .themebtn .t-dark{display:inline}
+:root[data-theme="light"] .themebtn .t-light{display:none}
+
 /* ------------------------------------------------------------------ 2. base */
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
@@ -73,14 +131,17 @@ body{
   font-variant-numeric:tabular-nums;
 }
 .hidden{display:none !important}
+/* visually hidden, still announced */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+  clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
 ::selection{background:var(--acc-fill);color:var(--txt)}
 
 /* thin dark scrollbars for the terminal's many scroll regions */
-*{scrollbar-width:thin;scrollbar-color:#2c343d transparent}
+*{scrollbar-width:thin;scrollbar-color:var(--scroll-thumb) transparent}
 ::-webkit-scrollbar{width:10px;height:10px}
 ::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:#2c343d;border:2px solid var(--bg);border-radius:var(--r-pill)}
-::-webkit-scrollbar-thumb:hover{background:#3a444f}
+::-webkit-scrollbar-thumb{background:var(--scroll-thumb);border:2px solid var(--bg);border-radius:var(--r-pill)}
+::-webkit-scrollbar-thumb:hover{background:var(--scroll-thumb-hover)}
 
 /* visible keyboard focus everywhere; mouse users keep the quiet hover */
 :focus-visible{outline:2px solid var(--acc);outline-offset:2px;border-radius:var(--r-xs)}
@@ -128,17 +189,17 @@ footer{color:var(--mut);font-size:var(--t-micro);text-align:center;padding:var(-
 button,.btn-confirm,.filterbar .fbtn{
   display:inline-flex;align-items:center;justify-content:center;gap:var(--s2);
   height:var(--ctl-h);padding:0 11px;
-  background:#1f2733;border:1px solid var(--line);color:var(--txt);
+  background:var(--ctl);border:1px solid var(--line);color:var(--txt);
   border-radius:var(--r-sm);font:600 var(--t-data)/1 var(--font);cursor:pointer;
   white-space:nowrap;
 }
-button:hover,.btn-confirm:hover,.filterbar .fbtn:hover{border-color:var(--acc);background:#242e3c}
-button:active,.btn-confirm:active,.filterbar .fbtn:active{background:#1a222d;transform:translateY(.5px)}
-button:disabled,.btn-confirm:disabled{opacity:.45;cursor:not-allowed;transform:none;background:#1f2733;border-color:var(--line)}
+button:hover,.btn-confirm:hover,.filterbar .fbtn:hover{border-color:var(--acc);background:var(--ctl-hover)}
+button:active,.btn-confirm:active,.filterbar .fbtn:active{background:var(--ctl-active);transform:translateY(.5px)}
+button:disabled,.btn-confirm:disabled{opacity:.45;cursor:not-allowed;transform:none;background:var(--ctl);border-color:var(--line)}
 button small{font-weight:400;color:var(--mut)}
 /* the primary action on a toolbar earns the one interactive hue */
-button.primary{border-color:var(--acc-line);color:#cfe0ff;background:var(--acc-fill)}
-button.primary:hover{border-color:var(--acc);background:#233151}
+button.primary{border-color:var(--acc-line);color:var(--ctl-primary-fg);background:var(--acc-fill)}
+button.primary:hover{border-color:var(--acc);background:var(--ctl-primary-hover)}
 
 .pill{
   display:inline-flex;align-items:center;gap:var(--s1);
@@ -160,7 +221,7 @@ label.pill select{height:20px;padding:0 4px}
 .chip:hover{color:var(--txt);border-color:var(--acc)}
 .chip[aria-pressed="true"],.chip.active{background:var(--card);color:var(--txt);border-color:var(--acc-line)}
 
-input[type=text],input[type=search],input:not([type]),select,.pat-input,.filterbar .finput{
+input[type=text],input[type=search],input:not([type]),select,.text-input,.filterbar .finput{
   height:var(--ctl-h);
   background:var(--inset);border:1px solid var(--line);border-radius:var(--r-sm);
   color:var(--txt);font:var(--t-data)/1 var(--font);padding:0 9px;
@@ -242,7 +303,7 @@ h2.subhead{
 .dtile.bad{border-color:var(--red-line);box-shadow:inset 2px 0 0 var(--red)}    .dtile.bad .dv{color:var(--red)}
 .dtile.warn{border-color:var(--amb-line);box-shadow:inset 2px 0 0 var(--amb)}   .dtile.warn .dv{color:var(--amb)}
 
-/* Stat strip — the scan header line. Replaces the old `.tpo-meta` tag soup
+/* Stat strip — the scan header line. Replaces the old `.metaline` tag soup
    (`universe 3150  NIFTY +0.38%  setups 31  to close 300m  updated 10:30`) where
    every fact carried identical weight. Here the label is 10px caps and the value
    is the hero, so "31 setups" reads before "universe 3150". */
@@ -272,14 +333,14 @@ h2.subhead{
 /* ----------------------------------------------------------- 7. toolbar rows */
 /* One toolbar grammar for every tab: controls left, status right, all on the
    shared 28px control height so nothing sits half a pixel off the baseline. */
-.tpo-toolbar{
+.toolbar{
   display:flex;gap:var(--s2);align-items:center;flex-wrap:wrap;margin:0 0 var(--s4);
 }
-.tpo-toolbar .grow,.grow{flex:1}
-.tpo-toolbar .pill{cursor:default}
+.toolbar .grow,.grow{flex:1}
+.toolbar .pill{cursor:default}
 #tpo-auto-wrap,#utpo-auto-wrap{cursor:pointer}
 #tpo-next,#utpo-next{font-variant-numeric:tabular-nums}
-.tpo-toolbar .pill.paused{color:var(--amb);border-color:var(--amb-line)}
+.toolbar .pill.paused{color:var(--amb);border-color:var(--amb-line)}
 
 /* Filter bar. Was a wall of differently-sized pills that wrapped to 9 rows on a
    phone; now a fixed 3-column grid of label-over-control cells, so the controls
@@ -306,7 +367,7 @@ h2.subhead{
 .filterbar .fbtn:hover{color:var(--txt);background:var(--card)}
 
 /* --------------------------------------------------------------- 8. tables */
-.tpo-tablewrap{
+.tablewrap{
   /* The wrapper is the scroll region, and the header pins to *it*. Previously
      `overflow-x:auto` silently made this a scroll container on both axes while
      the <th> was told `top:0` relative to the page — so the column headers
@@ -315,51 +376,63 @@ h2.subhead{
      to `hidden`, which still scrolls.) The cap only engages on tables that are
      actually long; a 6-row analysis table never reaches it and is unaffected. */
   overflow:auto;
-  max-height:calc(100vh - var(--stick-top) - 170px);
-  max-height:calc(100dvh - var(--stick-top) - 170px);
+  max-height:max(220px, calc(100vh - var(--stick-top) - 170px));
+  max-height:max(220px, calc(100dvh - var(--stick-top) - 170px));
   border:1px solid var(--line);border-radius:var(--r-md);background:var(--card);
   overscroll-behavior:contain;
 }
 .overflow-x-auto{overflow-x:auto}
-.tpo-table{width:100%;border-collapse:separate;border-spacing:0;font-size:var(--t-data)}
-.tpo-table th{
+.dtable{width:100%;border-collapse:separate;border-spacing:0;font-size:var(--t-data)}
+.dtable th{
   text-align:left;color:var(--mut);font-weight:600;font-size:var(--t-label);
   text-transform:uppercase;letter-spacing:.4px;
   padding:var(--s2) 10px;white-space:nowrap;
   background:var(--card);border-bottom:1px solid var(--line);
   position:sticky;top:0;z-index:2;
 }
-.tpo-table td{
+.dtable td{
   padding:var(--s1) 10px;border-bottom:1px solid var(--line-soft);
   vertical-align:middle;height:var(--row-h);
 }
-.tpo-table tbody tr:last-child td{border-bottom:0}
-.tpo-table th.num,.tpo-table td.num{
+.dtable tbody tr:last-child td{border-bottom:0}
+.dtable th.num,.dtable td.num{
   text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap;
 }
 /* zebra + hover: on a 14-column, 30-row grid the eye loses its row without one */
-.tpo-table tbody tr:nth-child(even) td{background:#12171f}
-.tpo-table tbody tr:hover td{background:var(--inset)}
-.tpo-table tbody tr[aria-selected="true"] td{background:var(--acc-fill)}
-.tpo-table tr[aria-selected="true"] td{box-shadow:inset 0 1px 0 var(--acc-line),inset 0 -1px 0 var(--acc-line)}
-.tpo-table tr[aria-selected="true"] td:first-child{box-shadow:inset 2px 0 0 var(--acc),inset 0 1px 0 var(--acc-line),inset 0 -1px 0 var(--acc-line)}
-.tpo-table .sym{font-weight:700;font-size:var(--t-body);white-space:nowrap;letter-spacing:-.1px}
-.tpo-table .rr{font-weight:600}
+.dtable tbody tr:nth-child(even) td{background:var(--zebra)}
+.dtable tbody tr:hover td{background:var(--inset)}
+.dtable tbody tr[aria-selected="true"] td{background:var(--acc-fill)}
+.dtable tr[aria-selected="true"] td{box-shadow:inset 0 1px 0 var(--acc-line),inset 0 -1px 0 var(--acc-line)}
+.dtable tr[aria-selected="true"] td:first-child{box-shadow:inset 2px 0 0 var(--acc),inset 0 1px 0 var(--acc-line),inset 0 -1px 0 var(--acc-line)}
+.dtable .sym{font-weight:700;font-size:var(--t-body);white-space:nowrap;letter-spacing:-.1px}
+
+/* The first column pins while the rest scrolls sideways. A 14-column scanner
+   cannot fit a phone or a tablet, and without this you end up reading a row of
+   entry/stop/target numbers with no idea whose they are. The hairline (not a
+   shadow) marks the seam, per the Hairline Rule. */
+.dtable th:first-child,.dtable td:first-child{
+  position:sticky;left:0;z-index:1;
+  background:var(--card);border-right:1px solid var(--line);
+}
+.dtable thead th:first-child{z-index:3}
+/* a full-width state row is not a column and must not pin */
+.dtable td.table-state{position:static;border-right:0;background:transparent}
+.dtable .rr{font-weight:600}
 
 /* The reason/why column was the single biggest density cost: min-width 220px,
    free wrapping, and 6–7 lines per row turned a 31-row scan into a ~2,500px
    scroll. Clamped to two lines with the full text on hover/title — the scan is
    for ranking, and the full rationale is one hover away. */
-.tpo-table .reason{color:var(--mut);white-space:normal;line-height:1.4;font-size:var(--t-micro);min-width:200px;max-width:300px}
+.dtable .reason{color:var(--mut);white-space:normal;line-height:1.4;font-size:var(--t-micro);min-width:200px;max-width:300px}
 /* The clamp lives on an inner span: a <td> blockifies to flow-root, so
    `display:-webkit-box` on the cell itself degraded to a hard crop with no
    ellipsis. Two lines rank the setup; the full rationale is one hover away. */
-.tpo-table .clamp{
+.dtable .clamp{
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
   overflow:hidden;overflow-wrap:anywhere;
 }
-.tpo-table .why{display:-webkit-box;font-size:var(--t-label);margin-top:2px;color:var(--dim)}
-.tpo-table tr:hover .clamp{-webkit-line-clamp:8}
+.dtable .why{display:-webkit-box;font-size:var(--t-label);margin-top:2px;color:var(--dim)}
+.dtable tr:hover .clamp{-webkit-line-clamp:8}
 .ttime{color:var(--mut);font-size:var(--t-label);margin-top:1px}
 .ezone{color:var(--mut);font-size:var(--t-label);font-weight:400;margin-top:1px;white-space:nowrap;font-family:var(--mono)}
 .capped{color:var(--amb);cursor:help}
@@ -387,13 +460,13 @@ table.kv{width:100%;border-collapse:collapse}
 .sig.LONG{background:var(--grn-fill);color:var(--grn);border-color:var(--grn-line)}
 .sig.SHORT{background:var(--red-fill);color:var(--red);border-color:var(--red-line)}
 .conf.High{background:var(--grn-fill);color:var(--grn);border-color:var(--grn-line)}
-.conf.Good{background:var(--acc-fill);color:var(--acc);border-color:var(--acc-line)}
+.conf.Good{background:var(--acc-fill);color:var(--acc-on-fill);border-color:var(--acc-line)}
 .conf.Fair{background:var(--amb-fill);color:var(--amb);border-color:var(--amb-line)}
 
 .st-VALID{background:var(--grn-fill);color:var(--grn);border-color:var(--grn-line)}
-.st-ARMED{background:var(--acc-fill);color:var(--acc);border-color:var(--acc-line)}
+.st-ARMED{background:var(--acc-fill);color:var(--acc-on-fill);border-color:var(--acc-line)}
 .st-EXTENDED{background:var(--amb-fill);color:var(--amb);border-color:var(--amb-line)}
-.st-TARGET{background:var(--teal-fill);color:var(--teal);border-color:#1e3a38}
+.st-TARGET{background:var(--teal-fill);color:var(--teal);border-color:var(--teal-line)}
 .st-INVALID{background:var(--red-fill);color:var(--red);border-color:var(--red-line)}
 .st-EXPIRED{background:var(--neu-fill);color:var(--mut);border-color:var(--line)}
 .st.good{background:var(--grn-fill);color:var(--grn);border-color:var(--grn-line)}
@@ -410,7 +483,7 @@ table.kv{width:100%;border-collapse:collapse}
 .setup-EXPANSION{color:var(--mut)}
 .tier{background:var(--neu-fill);color:var(--mut);border-color:var(--line)}
 .tier-confirmed{background:var(--grn-fill);color:var(--grn);border-color:var(--grn-line)}
-.tier-pre{background:var(--acc-fill);color:var(--acc);border-color:var(--acc-line)}
+.tier-pre{background:var(--acc-fill);color:var(--acc-on-fill);border-color:var(--acc-line)}
 .tier-watch{background:var(--neu-fill);color:var(--mut)}
 .need-none{color:var(--grn);border-color:var(--grn-line)}
 
@@ -439,14 +512,14 @@ table.kv{width:100%;border-collapse:collapse}
 .state-block.warn{border-style:solid;border-color:var(--amb-line);background:var(--amb-fill)}
 .state-block.warn .sb-title{color:var(--amb)}
 /* inside a table body */
-td.tpo-empty{padding:0;border-bottom:0}
-td.tpo-empty .state-block{border:0;border-radius:0;background:transparent}
+td.table-state{padding:0;border-bottom:0}
+td.table-state .state-block{border:0;border-radius:0;background:transparent}
 .empty,.hint{color:var(--mut);font-size:var(--t-data);padding:var(--s2) 0;line-height:1.55}
 .empty:has(.state-block),.hint:has(.state-block){padding:0}
 
 /* Skeleton rows: a scan takes seconds against a 3,000-name universe. Showing the
    shape of the answer beats showing the word "Loading". */
-.skel{background:linear-gradient(90deg,var(--inset) 25%,#161d27 50%,var(--inset) 75%);
+.skel{background:linear-gradient(90deg,var(--inset) 25%,var(--skel-hi) 50%,var(--inset) 75%);
   background-size:200% 100%;border-radius:var(--r-xs);height:10px;display:block}
 @media (prefers-reduced-motion:no-preference){.skel{animation:shimmer 1.3s linear infinite}}
 @keyframes shimmer{to{background-position:-200% 0}}
@@ -455,56 +528,56 @@ td.tpo-empty .state-block{border:0;border-radius:0;background:transparent}
 .is-busy{opacity:.55;pointer-events:none;transition:opacity var(--dur) var(--ease)}
 
 /* --------------------------------------------------------- 11. disclosures */
-.tpo-how{
+.disclosure{
   margin:0 0 var(--s3);border:1px solid var(--line);border-radius:var(--r-md);background:var(--inset);
 }
-.tpo-how>summary{
+.disclosure>summary{
   cursor:pointer;padding:var(--s2) var(--s4);font-weight:600;font-size:var(--t-data);
   color:var(--mut);list-style:none;user-select:none;display:flex;align-items:center;gap:var(--s2);
   min-height:var(--ctl-h);
 }
-.tpo-how>summary:hover{color:var(--txt)}
-.tpo-how>summary::-webkit-details-marker{display:none}
-.tpo-how>summary::before{content:'▸';color:var(--dim);font-size:10px;transition:transform var(--dur) var(--ease)}
-.tpo-how[open]>summary{color:var(--txt);border-bottom:1px solid var(--line)}
-.tpo-how[open]>summary::before{transform:rotate(90deg)}
+.disclosure>summary:hover{color:var(--txt)}
+.disclosure>summary::-webkit-details-marker{display:none}
+.disclosure>summary::before{content:'▸';color:var(--dim);font-size:10px;transition:transform var(--dur) var(--ease)}
+.disclosure[open]>summary{color:var(--txt);border-bottom:1px solid var(--line)}
+.disclosure[open]>summary::before{transform:rotate(90deg)}
 /* Disclosure prose was running the full 1,700px shell width — a 200-character
    measure. Capped to a readable column. */
-.tpo-how-body{padding:var(--s2) var(--s4) var(--s4)}
-.tpo-how-body p{margin:var(--s3) 0;color:var(--mut);font-size:var(--t-data);line-height:1.6;max-width:88ch}
-.tpo-how-body b{color:var(--txt);font-weight:600}
-.tpo-how-body code,.start-steps code{
+.disclosure-body{padding:var(--s2) var(--s4) var(--s4)}
+.disclosure-body p{margin:var(--s3) 0;color:var(--mut);font-size:var(--t-data);line-height:1.6;max-width:88ch}
+.disclosure-body b{color:var(--txt);font-weight:600}
+.disclosure-body code,.start-steps code{
   background:var(--well);border:1px solid var(--line);border-radius:4px;padding:1px 5px;
-  font:var(--t-micro)/1 var(--mono);color:#cfe3ff;
+  font:var(--t-micro)/1 var(--mono);color:var(--code-fg);
 }
-.tpo-how-note{border-top:1px dashed var(--line);padding-top:var(--s3);margin-top:var(--s3)}
-.tpo-trade .tpo-how-body b{color:var(--txt)}
+.disclosure-note{border-top:1px dashed var(--line);padding-top:var(--s3);margin-top:var(--s3)}
+.disclosure-trade .disclosure-body b{color:var(--txt)}
 /* the two disclosures sit side by side instead of stacking two full-width bars
    above the data they explain */
 .how-row{display:grid;grid-template-columns:1fr 1fr;gap:var(--s3);margin:0 0 var(--s4)}
-.how-row .tpo-how{margin:0}
+.how-row .disclosure{margin:0}
 @media(max-width:820px){.how-row{grid-template-columns:1fr}}
 
 /* Stage-2 rejection log: capped and collapsed. Rendered inline it was a
    twelve-sentence grey wall directly under the table it explained. */
 .skiplist{margin:var(--s4) 0 0}
-.skiplist .tpo-how-body{max-height:180px;overflow:auto;padding-top:var(--s3)}
+.skiplist .disclosure-body{max-height:180px;overflow:auto;padding-top:var(--s3)}
 .skiplist ul{margin:0;padding-left:18px;color:var(--mut);font-size:var(--t-micro);line-height:1.6}
 .skiplist li{margin:2px 0}
 
 /* legacy meta line, still used for secondary notes under tables */
-.tpo-meta{color:var(--mut);font-size:var(--t-data);margin:var(--s3) 0 0;display:flex;gap:var(--s2);flex-wrap:wrap;align-items:center;line-height:1.6}
-.tpo-meta .tag{background:var(--inset);border:1px solid var(--line);border-radius:var(--r-sm);padding:2px 8px}
-.tpo-meta .tag.status-live{color:var(--grn);border-color:var(--grn-line);font-weight:600}
-.tpo-meta .tag.status-delayed{color:var(--amb);border-color:var(--amb-line);font-weight:600}
-.tpo-meta .tag.status-closed{color:var(--mut)}
+.metaline{color:var(--mut);font-size:var(--t-data);margin:var(--s3) 0 0;display:flex;gap:var(--s2);flex-wrap:wrap;align-items:center;line-height:1.6}
+.metaline .tag{background:var(--inset);border:1px solid var(--line);border-radius:var(--r-sm);padding:2px 8px}
+.metaline .tag.status-live{color:var(--grn);border-color:var(--grn-line);font-weight:600}
+.metaline .tag.status-delayed{color:var(--amb);border-color:var(--amb-line);font-weight:600}
+.metaline .tag.status-closed{color:var(--mut)}
 
-.tpo-confirm{
+.readout{
   background:var(--well);border:1px solid var(--line);border-radius:var(--r-md);
   padding:var(--s4);margin-top:var(--s4);font-size:var(--t-data);
 }
-.tpo-confirm h3{margin:0 0 var(--s2);font-size:var(--t-body)}
-.tpo-confirm .prow{color:var(--mut);font:var(--t-data)/1.6 var(--mono)}
+.readout h3{margin:0 0 var(--s2);font-size:var(--t-body)}
+.readout .prow{color:var(--mut);font:var(--t-data)/1.6 var(--mono)}
 
 /* --------------------------------------------------------- 12. tab specifics */
 /* --- Signal Summary --- */
@@ -545,29 +618,29 @@ td.tpo-empty .state-block{border:0;border-radius:0;background:transparent}
 .checklist input{margin-top:2px;flex:none}
 
 /* --- symbol combobox --- */
-.pat-combo{position:relative;flex:0 1 340px;min-width:220px}
-.pat-input{width:100%;min-width:0}
-.pat-suggest{
+.combo{position:relative;flex:0 1 340px;min-width:220px}
+.text-input{width:100%;min-width:0}
+.suggest{
   position:absolute;z-index:30;top:calc(100% + 4px);left:0;right:0;margin:0;padding:var(--s1);
   list-style:none;max-height:290px;overflow-y:auto;
   background:var(--well);border:1px solid var(--line);border-radius:var(--r-md);
-  box-shadow:0 12px 32px #000a;
+  box-shadow:0 12px 32px var(--overlay-shadow);
 }
-.pat-suggest li{display:flex;gap:var(--s3);align-items:baseline;padding:var(--s2) var(--s3);border-radius:var(--r-sm);cursor:pointer;font-size:var(--t-data)}
-.pat-suggest li:hover,.pat-suggest li.active{background:var(--acc-fill)}
-.pat-suggest .s-sym{font-weight:600;color:var(--txt)}   /* was var(--fg): never defined */
-.pat-suggest .s-ex{color:var(--mut);font-size:var(--t-micro);border:1px solid var(--line);border-radius:4px;padding:0 5px}
-.pat-suggest .s-desc{color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;text-align:right}
-.pat-suggest .s-none{color:var(--mut);cursor:default}
+.suggest li{display:flex;gap:var(--s3);align-items:baseline;padding:var(--s2) var(--s3);border-radius:var(--r-sm);cursor:pointer;font-size:var(--t-data)}
+.suggest li:hover,.suggest li.active{background:var(--acc-fill)}
+.suggest .s-sym{font-weight:600;color:var(--txt)}   /* was var(--fg): never defined */
+.suggest .s-ex{color:var(--mut);font-size:var(--t-micro);border:1px solid var(--line);border-radius:4px;padding:0 5px}
+.suggest .s-desc{color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;text-align:right}
+.suggest .s-none{color:var(--mut);cursor:default}
 
 /* --- analysis tables: value colouring --- */
-#pat-card .tpo-table td.good,#vcp-card .tpo-table td.good,#ew-card .tpo-table td.good,
-#ew-card .tpo-table .good,#cache-card .tpo-table td.good{color:var(--grn)}
-#pat-card .tpo-table td.bad,#vcp-card .tpo-table td.bad,#ew-card .tpo-table td.bad,
-#ew-card .tpo-table .bad,#cache-card .tpo-table td.bad{color:var(--red)}
-#pat-card .tpo-table td.warn,#vcp-card .tpo-table td.warn,#ew-card .tpo-table td.warn,
-#ew-card .tpo-table .warn,#cache-card .tpo-table td.warn{color:var(--amb)}
-#pat-card .tpo-table td,#vcp-card .tpo-table td,#ew-card .tpo-table td,#cache-card .tpo-table td{vertical-align:top}
+#pat-card .dtable td.good,#vcp-card .dtable td.good,#ew-card .dtable td.good,
+#ew-card .dtable .good,#cache-card .dtable td.good{color:var(--grn)}
+#pat-card .dtable td.bad,#vcp-card .dtable td.bad,#ew-card .dtable td.bad,
+#ew-card .dtable .bad,#cache-card .dtable td.bad{color:var(--red)}
+#pat-card .dtable td.warn,#vcp-card .dtable td.warn,#ew-card .dtable td.warn,
+#ew-card .dtable .warn,#cache-card .dtable td.warn{color:var(--amb)}
+#pat-card .dtable td,#vcp-card .dtable td,#ew-card .dtable td,#cache-card .dtable td{vertical-align:top}
 
 /* --- circuit / risk callout --- */
 .circ{margin-top:var(--s3);padding:var(--s2) 10px;border-radius:var(--r-sm);font-size:var(--t-data);line-height:1.5}
@@ -631,7 +704,7 @@ td.tpo-empty .state-block{border:0;border-radius:0;background:transparent}
   .statstrip .stat{flex:1 1 40%;border-bottom:1px solid var(--line-soft)}
   .statstrip .stat.grow{align-items:flex-start;text-align:left}
   .decision{grid-template-columns:1fr 1fr;gap:var(--s2)}
-  .tpo-table .reason,.tpo-table .why{min-width:180px;max-width:220px}
+  .dtable .reason,.dtable .why{min-width:180px;max-width:220px}
   .state-block{padding:var(--s5) var(--s4)}
 }
 
@@ -641,9 +714,9 @@ td.tpo-empty .state-block{border:0;border-radius:0;background:transparent}
     transition:border-color var(--dur) var(--ease),color var(--dur) var(--ease),
                background-color var(--dur) var(--ease),transform var(--dur) var(--ease);
   }
-  .tpo-table tbody tr td,.symlist li,.pat-suggest li{transition:background-color var(--dur) var(--ease)}
-  .dtile,input,select,.pat-input{transition:border-color var(--dur) var(--ease),box-shadow var(--dur) var(--ease)}
-  .tpo-how>summary{transition:color var(--dur) var(--ease)}
+  .dtable tbody tr td,.symlist li,.suggest li{transition:background-color var(--dur) var(--ease)}
+  .dtile,input,select,.text-input{transition:border-color var(--dur) var(--ease),box-shadow var(--dur) var(--ease)}
+  .disclosure>summary{transition:color var(--dur) var(--ease)}
 }
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important}

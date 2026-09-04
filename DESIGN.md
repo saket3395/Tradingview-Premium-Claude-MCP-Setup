@@ -24,6 +24,7 @@ colors:
   caution-line: "#3a3115"
   interactive-fill: "#1c2740"
   interactive-line: "#1e3050"
+  interactive-on-fill: "#5c98f8"
   target: "#3fb6a8"
   target-fill: "#122a2a"
   neutral-fill: "#20242c"
@@ -169,6 +170,14 @@ A four-grey neutral chassis carrying four meaning-only signal colors on a near-b
 
 **The Soft-White Rule.** Primary text is `#d7dde6`, never `#ffffff`. Pure white on near-black vibrates and fatigues; the off-white reads calmer over a long session.
 
+### Themes
+
+**Dark is the product, light is an option.** The OS `prefers-color-scheme` is deliberately *not* consulted: a trading terminal should not repaint itself because someone's laptop is in light mode. A header toggle sets `data-theme="light"` on the root, persisted per browser and applied by an inline script before first paint so there is no flash. Only tokens are redefined — no component rule knows a theme exists.
+
+The light palette is not the dark one inverted. Signal hues are darkened for legibility on light surfaces (`#26a17b` green reads at 2.4:1 on white and would fail as text; light mode uses `#0d7a56`), and the tonal stack runs the other way — `#eef1f5` ground, white panels, `#f4f6f9` inset.
+
+**The AA Floor.** Every text/surface pairing in both themes measures **≥4.5:1** (dark min 4.60, light min 4.67). This forced one correction to the original palette: `#3b82f6` label text on the `#1c2740` accent fill — the **ARMED** state badge and the **Good** confidence badge — measured **4.04:1**, below the floor this document already required. The interactive hue is unchanged everywhere it carries meaning (focus rings, borders, active affordances); only the label *inside* an accent fill is lifted to `--interactive-on-fill` `#5c98f8` (5.2:1).
+
 ## Typography
 
 **UI Font:** system sans (`ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto`)
@@ -196,6 +205,8 @@ A centered two-column CSS grid, `gap: 12px`, `padding: 12px 16px`. Cards default
 
 **The masthead is two sticky rails:** identity + live status on top, tab navigation below. A single combined row wrapped to three lines by 1100px and stood **257px tall on a 375px phone** — a third of the viewport, permanently sticky; the split rails hold at 78px desktop / 76px mobile, and the nav rail scrolls sideways rather than wrapping. Hairline separators (`.tabgap`) group the twelve tabs into orientation · live signals · analysis · idea scans · journal · utility.
 
+**The first column pins too.** `th:first-child` / `td:first-child` are `position: sticky; left: 0` with a hairline seam. A 14-column scanner cannot fit a phone or a tablet, and without a pinned symbol you end up reading a row of entry/stop/target numbers with no idea whose they are. Hairline, not shadow, per the Hairline Rule.
+
 **Table headers pin to their wrapper.** `.tpo-tablewrap` is the scroll region (`overflow: auto`, capped at `calc(100dvh - header - 170px)`) and `th` is `position: sticky; top: 0` inside it. The earlier arrangement — `overflow-x: auto` with `th { top: 0 }` aimed at the page — never pinned anything, because a horizontally-scrolling wrapper is already a scroll container on both axes (and `overflow-y: clip` is no escape: beside a scrolling x-axis it computes to `hidden`). The height cap only engages on tables that are actually long; a six-row analysis table never reaches it.
 
 Density is deliberately high — 12px card padding, 6–8px internal gaps, 4px table cell padding, 46px scanner rows. Responsive: **≤1100px** collapses to a single column and `.span2` stops spanning; **≤820px** tightens page and card padding; **≤560px** drops the filter bar to two columns and the tile grids to two-up. This is a desktop-first instrument that stays usable on a phone, not a mobile-first app.
@@ -218,6 +229,10 @@ Tight, rectangular, terminal geometry. The radius scale climbs with surface size
 **The Hairline Rule.** One border weight system-wide: 1px, `--hairline`. Structure is drawn with light, even lines — never with weight, color, or shadow.
 
 ## Components
+
+### Naming
+
+Component classes are named for **what the component is**, never for the tab that first needed it. The sheet had grown the other way — eleven of the twelve tabs styled their tables with `.tpo-table` and their disclosures with `.tpo-how`, which reads as if those tabs were borrowing the TPO scanner's styles rather than sharing a system. Current names: `.dtable` · `.tablewrap` · `.toolbar` · `.disclosure` (`-body`, `-note`, `-trade`) · `.metaline` · `.readout` · `.table-state` · `.statstrip` · `.state-block` · `.filterbar` · `.combo` · `.suggest` · `.text-input`. Element **ids** still carry a tab prefix (`#tpo-body`, `#utpo-meta`) — there they are identity, not styling.
 
 ### Buttons
 - **Shape:** 6px radius (`{rounded.sm}`), 1px hairline border.
@@ -272,6 +287,8 @@ A `<details>` panel (`inset` fill, 8px, custom ▸/▾ marker) holding method pr
 
 ### Don't:
 - **Don't** introduce a decorative or brand accent color; there is no non-semantic hue in this system.
+- **Don't** name a component class after the tab that first needed it, and don't hardcode a color, spacing or radius in a component rule — every value comes from a token, which is what makes the light theme a single block of overrides.
+- **Don't** let the OS color-scheme flip the product; light mode is an explicit, persisted user choice.
 - **Don't** put drop shadows on resting cards, tiles, or badges — shadow is reserved for truly floating overlays.
 - **Don't** fabricate numbers, states, testimonials, or performance to fill a panel — a truthful "no data" is the correct design (product invariant).
 - **Don't** let primary text or state colors fall below WCAG AA contrast on `panel`/`terminal-ink`; density must never cost legibility.
