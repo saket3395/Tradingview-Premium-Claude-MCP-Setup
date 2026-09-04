@@ -1525,10 +1525,15 @@ async function switchSymbol(sym) {
         cdp.up ? 'Connected' : 'Not connected', cdp.up ? 'good' : 'bad',
         cdp.up ? `${cdp.chartTabs || 0} chart tab(s) open · live chart reads work`
                : 'Run  npm run tv:debug  to relaunch TradingView with CDP on :9222'));
+      // India history needs no credential — the provider's historical-candle endpoints are
+      // open. The token buys exactly one thing: the real circuit band at TPO Confirm, whose
+      // market-quote endpoint does 401 without it. The old copy claimed it gated all NSE
+      // history, which is what made a missing token look like a dead dashboard.
       box.append(tile('NSE data token · India (optional)',
-        up.configured ? 'Configured' : 'Not set', up.configured ? 'good' : 'warn',
-        up.configured ? 'Real NSE circuit at Confirm · NSE price history · 1-min backtest · regime model'
-               : 'Add an NSE data token in .env (see .env.example) to unlock NSE history + real circuits. Without it those panels say "no data" honestly.'));
+        up.configured ? 'Configured' : 'Not set', up.configured ? 'good' : '',
+        up.configured ? 'Real NSE circuit band at Confirm. History, backtest and regime work either way.'
+               : 'Not needed for analysis — NSE history, the 1-min backtest and the regime model all work without it. '
+                 + 'It only adds the real circuit band at TPO Confirm; without it Confirm uses the assumed band.'));
       box.append(tile('US data keys (optional)',
         al.configured ? `Configured · ${al.feed} feed` : 'Not set', al.configured ? 'good' : 'warn',
         al.configured ? 'US price history for the Pattern / VCP / Elliott / Breakout tabs'
