@@ -1244,7 +1244,7 @@ async function switchSymbol(sym) {
       meta.className = 'statstrip';
       statStrip(meta, [
         { k: 'feed', v: st === 'live' ? 'LIVE' : st === 'delayed' ? 'DELAYED' : st === 'closed' ? 'MARKET CLOSED' : '—', cls: 'status-' + st, dot: true },
-        { k: 'found', v: found, tone: found ? 'up' : 'mut' },
+        { k: 'found', v: r.truncated ? `${found} (showing ${r.returned})` : found, tone: found ? 'up' : 'mut' },
         tc.CONFIRMED ? { k: 'confirmed', v: tc.CONFIRMED, tone: 'up' } : null,
         tc['PRE-BREAKOUT'] ? { k: 'pre-breakout', v: tc['PRE-BREAKOUT'] } : null,
         tc.WATCH ? { k: 'watch', v: tc.WATCH, tone: 'mut' } : null,
