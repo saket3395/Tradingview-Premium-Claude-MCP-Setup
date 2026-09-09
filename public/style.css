@@ -171,15 +171,39 @@ header{
   overflow-x:auto;scrollbar-width:none;padding:0 var(--s5);width:100%;
 }
 .tabs::-webkit-scrollbar{display:none}
+
+/* Scroll affordance for the two hidden-scrollbar rails. The scrollbar stays
+   hidden (it is DESIGN.md's nav rule); the cue is a short fade on whichever side
+   still has content, driven by classes app.js sets on scroll/resize. A mask, not
+   an overlay element: an absolutely-positioned fade inside a scroll container
+   scrolls away with the content it is meant to be masking. No new hue and no
+   chrome — a browser without mask support simply shows no fade. */
+.tabs,.status{--fade:24px}
+.tabs.has-end,.status.has-end{
+  -webkit-mask-image:linear-gradient(to right,#000 calc(100% - var(--fade)),transparent);
+          mask-image:linear-gradient(to right,#000 calc(100% - var(--fade)),transparent);
+}
+.tabs.has-start,.status.has-start{
+  -webkit-mask-image:linear-gradient(to right,transparent,#000 var(--fade));
+          mask-image:linear-gradient(to right,transparent,#000 var(--fade));
+}
+.tabs.has-start.has-end,.status.has-start.has-end{
+  -webkit-mask-image:linear-gradient(to right,transparent,#000 var(--fade),#000 calc(100% - var(--fade)),transparent);
+          mask-image:linear-gradient(to right,transparent,#000 var(--fade),#000 calc(100% - var(--fade)),transparent);
+}
+
 .tabgap{flex:0 0 1px;background:var(--line);margin:8px var(--s3);align-self:stretch}
 
-main{
+.view{
   display:grid;grid-template-columns:repeat(2,1fr);gap:var(--s4);
   padding:var(--s4) var(--s5) var(--s6);
   max-width:var(--shell);margin:0 auto;align-items:start;
 }
+/* A tab panel is focused programmatically after a tab activation; it is not a
+   tab stop of its own (it contains focusable content), so no visible ring. */
+.view:focus{outline:none}
 /* Prose-led views read at a book measure; data views take the full shell. */
-main#view-start{max-width:var(--shell-narrow)}
+#view-start{max-width:var(--shell-narrow)}
 .span2{grid-column:1/-1}
 
 footer{color:var(--mut);font-size:var(--t-micro);text-align:center;padding:var(--s5);
@@ -220,6 +244,9 @@ label.pill select{height:20px;padding:0 4px}
 }
 .chip:hover{color:var(--txt);border-color:var(--acc)}
 .chip[aria-pressed="true"],.chip.active{background:var(--card);color:var(--txt);border-color:var(--acc-line)}
+/* A chip that is a label, not a control: same geometry, no affordance. */
+.chip-static{cursor:default}
+.chip-static:hover{color:var(--mut);border-color:var(--line)}
 
 input[type=text],input[type=search],input:not([type]),select,.text-input,.filterbar .finput{
   height:var(--ctl-h);
@@ -290,6 +317,33 @@ h2.subhead{
   padding:var(--s3) 10px;min-width:0;
 }
 .dtile.wide{grid-column:1/-1}
+/* The verdict row. Twelve identically-sized tiles made "Entry Readiness" — the
+   thing the panel exists to produce — the twelfth item, indistinguishable from
+   "Session". Larger cells, fewer per row, and a hairline separating them from the
+   diagnostics that support them. Same component, one size modifier. */
+.decision-primary{grid-template-columns:repeat(auto-fit,minmax(232px,1fr));margin-bottom:var(--s3)}
+.decision-primary .dtile{padding:10px var(--s4)}
+.decision-primary .dtile .dv{font-size:18px;line-height:1.25}
+.decision-primary+.decision{padding-top:var(--s4);border-top:1px solid var(--line-soft)}
+/* A value that actually moved says so once. Interactive blue: this is attention,
+   not market direction — the tile's own good/bad/warn rail still carries that. */
+@media (prefers-reduced-motion:no-preference){
+  .dtile.flash{animation:tileflash 900ms var(--ease)}
+}
+@keyframes tileflash{
+  0%{background:var(--acc-fill);border-color:var(--acc-line)}
+  100%{background:var(--inset)}
+}
+/* Stale live data. Amber is the hesitation colour and this is exactly that:
+   the numbers are real, they are simply no longer current. */
+.stalebar{
+  display:flex;align-items:center;gap:var(--s2);margin:0 0 var(--s4);
+  padding:var(--s2) var(--s4);border-radius:var(--r-md);
+  background:var(--amb-fill);border:1px solid var(--amb-line);color:var(--amb);
+  font-size:var(--t-data);font-weight:600;
+}
+.stalebar b{color:var(--txt);font-variant-numeric:tabular-nums}
+.pill.stale{color:var(--amb);border-color:var(--amb-line)}
 /* a state standing in for a whole tile grid takes the whole row */
 .decision>.state-block{grid-column:1/-1}
 .dtile .dk{
@@ -322,6 +376,17 @@ h2.subhead{
 .statstrip .sk{color:var(--mut);font-size:var(--t-label);font-weight:700;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
 .statstrip .sv{font-size:var(--t-body);font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums}
 .statstrip .sv.up{color:var(--grn)} .statstrip .sv.down{color:var(--red)} .statstrip .sv.mut{color:var(--mut);font-weight:500}
+/* Most stat values are short and must never wrap mid-number, which is why .sv is
+   nowrap. A few migrated cells carry a sentence (a verdict reason, an invalidation
+   caveat) — those opt in, and only ever in a .grow cell that can take the width. */
+.statstrip .sv.wrap{white-space:normal;line-height:1.45;font-weight:500}
+/* A cell whose label would be empty keeps the value on the strip's baseline
+   instead of leaving a 10px gap where the overline would be. */
+.statstrip .sk:empty{display:none}
+/* .grow right-aligns, which is right for the trailing timestamp on a scan header
+   but wrong for a strip that is one prose cell — that read as a stray right-aligned
+   caption. .wide takes the row and stays left-aligned with the rest of the card. */
+.statstrip .stat.wide{flex:1 1 100%;align-items:flex-start;text-align:left}
 /* live/delayed/closed marker leads the strip */
 .statstrip .stat.status-live .sv{color:var(--grn)}
 .statstrip .stat.status-delayed .sv{color:var(--amb)}
@@ -392,6 +457,11 @@ h2.subhead{
   color:var(--mut);font-size:var(--t-data);font-variant-numeric:tabular-nums;
   background:none;border:0;border-radius:0;flex:0 0 auto;
 }
+/* A control that is away from its default says so. The aggregate count tells you
+   something is filtered; this tells you which of ten controls is doing it — which
+   matters because the selections persist across reloads. */
+.filterbar .fpill.is-set .fk{color:var(--acc)}
+.filterbar .fpill.is-set select,.filterbar .fpill.is-set .finput{border-color:var(--acc-line)}
 .filterbar .fcount.filtered{color:var(--acc);font-weight:600}
 .filterbar .fbtn{flex:0 0 auto;color:var(--mut);background:transparent}
 .filterbar .fbtn:hover{color:var(--txt);background:var(--card)}
@@ -425,15 +495,37 @@ h2.subhead{
   vertical-align:middle;height:var(--row-h);
 }
 .dtable tbody tr:last-child td{border-bottom:0}
+
+/* Sortable headers. A 40-row, 13-column scan had exactly one order — the server's
+   — and no way to ask "highest R:R first". The header is the control: the caret is
+   dim until you hover, and takes the interactive hue only while a sort is active,
+   so an unsorted grid gains no new colour. Blue here is an active affordance, which
+   is what the Meaning-Only Color Rule reserves it for. */
+.dtable th.sortable{cursor:pointer;padding-right:20px;position:sticky;user-select:none}
+.dtable th.sortable::after{
+  content:'';position:absolute;right:8px;top:50%;margin-top:-2px;
+  border-left:3px solid transparent;border-right:3px solid transparent;
+  border-top:4px solid var(--dim);opacity:0;
+}
+.dtable th.sortable:hover{color:var(--txt)}
+.dtable th.sortable:hover::after{opacity:.7}
+.dtable th.sortable.sorted{color:var(--txt)}
+.dtable th.sortable.sorted::after{opacity:1;border-top-color:var(--acc)}
+/* ascending flips the caret: same triangle, drawn from the bottom edge */
+.dtable th.sortable.sorted.sort-asc::after{
+  border-top:0;border-bottom:4px solid var(--acc);margin-top:-2px;
+}
 .dtable th.num,.dtable td.num{
   text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap;
 }
 /* zebra + hover: on a 14-column, 30-row grid the eye loses its row without one */
 .dtable tbody tr:nth-child(even) td{background:var(--zebra)}
 .dtable tbody tr:hover td{background:var(--inset)}
-.dtable tbody tr[aria-selected="true"] td{background:var(--acc-fill)}
-.dtable tr[aria-selected="true"] td{box-shadow:inset 0 1px 0 var(--acc-line),inset 0 -1px 0 var(--acc-line)}
-.dtable tr[aria-selected="true"] td:first-child{box-shadow:inset 2px 0 0 var(--acc),inset 0 1px 0 var(--acc-line),inset 0 -1px 0 var(--acc-line)}
+/* "the row you are in" — a class, not aria-selected: aria-selected is only
+   meaningful on a grid/listbox row, and these are plain data tables. */
+.dtable tbody tr.is-current td{background:var(--acc-fill)}
+.dtable tr.is-current td{box-shadow:inset 0 1px 0 var(--acc-line),inset 0 -1px 0 var(--acc-line)}
+.dtable tr.is-current td:first-child{box-shadow:inset 2px 0 0 var(--acc),inset 0 1px 0 var(--acc-line),inset 0 -1px 0 var(--acc-line)}
 .dtable .sym{font-weight:700;font-size:var(--t-body);white-space:nowrap;letter-spacing:-.1px}
 
 /* The first column pins while the rest scrolls sideways. A 14-column scanner
@@ -466,6 +558,14 @@ h2.subhead{
 .ttime{color:var(--mut);font-size:var(--t-label);margin-top:1px}
 .ezone{color:var(--mut);font-size:var(--t-label);font-weight:400;margin-top:1px;white-space:nowrap;font-family:var(--mono)}
 .capped{color:var(--amb);cursor:help}
+
+/* Breakdown: three small tables side by side on a wide shell, stacking as they
+   run out of room. Uses the width the data grid already has rather than adding a
+   fourth vertical scroll to the Testing tab. */
+.bd-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:var(--s4)}
+.bd-grid>div{min-width:0}
+.bd-grid .scan-head{margin-top:0;padding-top:0;border-top:0}
+.bd-grid .tablewrap{max-height:none}
 
 /* key/value table (health, providers) */
 table.kv{width:100%;border-collapse:collapse}
@@ -707,13 +807,13 @@ td.table-state .state-block{border:0;border-radius:0;background:transparent}
 /* ≤1400: the shell is already fluid; drop to a single column earlier so the two
    side-by-side panels never squeeze a table below its own minimum. */
 @media(max-width:1100px){
-  main{grid-template-columns:1fr}
+  .view{grid-template-columns:1fr}
   .span2{grid-column:auto}
 }
 @media(max-width:820px){
   .rail{padding:0 var(--s4)}
   .tabs{padding:0 var(--s4)}
-  main{padding:var(--s3) var(--s4) var(--s5);gap:var(--s3)}
+  .view{padding:var(--s3) var(--s4) var(--s5);gap:var(--s3)}
   .card{padding:var(--s4)}
   .start-rules{grid-template-columns:1fr}
   .decision{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
@@ -725,7 +825,7 @@ td.table-state .state-block{border:0;border-radius:0;background:transparent}
   .tabs{padding:0 10px}
   .tab{padding:0 10px;height:34px}
   .tabgap{margin:7px var(--s2)}
-  main{padding:var(--s3) 10px var(--s5)}
+  .view{padding:var(--s3) 10px var(--s5)}
   .card{padding:var(--s3) 10px var(--s4)}
   h2{font-size:var(--t-body)}
   .filterbar{padding:var(--s3)}

@@ -13,6 +13,10 @@
 <script>try{if(localStorage.getItem('theme')==='light')document.documentElement.dataset.theme='light'}catch(e){}</script>
 </head>
 <body>
+<!-- One polite live region for the whole app. Scan status, result counts and
+     failures changed silently before this; the countdown tick deliberately does
+     not write here, or the region would never stop talking. -->
+<div id="sr-live" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
 <header>
   <!-- Rail 1: identity + live connection status. Split from navigation so neither
        rail ever wraps — the single combined row stood 257px tall on a phone. -->
@@ -33,30 +37,31 @@
   <!-- Rail 2: navigation. Scrolls sideways rather than wrapping; hairlines group
        the tabs into orientation / live signals / analysis / idea scans / journal. -->
   <div class="rail rail-nav">
-    <nav class="tabs" id="tabs" aria-label="Dashboard sections">
-      <button class="tab active" data-view="start" title="New here? What this dashboard is, what each tab does, and what you need to set up.">Start Here</button>
+    <nav class="tabs" id="tabs" role="tablist" aria-label="Dashboard sections">
+      <button class="tab active" id="tab-start" data-view="start" role="tab" aria-controls="view-start" aria-selected="true" tabindex="0" title="New here? What this dashboard is, what each tab does, and what you need to set up.">Start Here</button>
       <span class="tabgap" aria-hidden="true"></span>
-      <button class="tab" data-view="dashboard" title="Live intraday read of one symbol from your active TradingView chart (bias, trend, volume, entry readiness).">Dashboard</button>
-      <button class="tab" data-view="tpo" title="India TPO Scanner — auto-scans the whole NSE for intraday setups, each with a fixed entry / stop / target and a state that tells you when to act.">India TPO</button>
-      <button class="tab" data-view="tpo-usa" title="USA TPO Scanner — same intraday setup scanner for US stocks (NASDAQ/NYSE/AMEX), no circuit clamp.">USA TPO</button>
+      <button class="tab" id="tab-dashboard" data-view="dashboard" role="tab" aria-controls="view-dashboard" aria-selected="false" tabindex="-1" title="Live intraday read of one symbol from your active TradingView chart (bias, trend, volume, entry readiness).">Dashboard</button>
+      <button class="tab" id="tab-tpo" data-view="tpo" role="tab" aria-controls="view-tpo" aria-selected="false" tabindex="-1" title="India TPO Scanner — auto-scans the whole NSE for intraday setups, each with a fixed entry / stop / target and a state that tells you when to act.">India TPO</button>
+      <button class="tab" id="tab-tpo-usa" data-view="tpo-usa" role="tab" aria-controls="view-tpo-usa" aria-selected="false" tabindex="-1" title="USA TPO Scanner — same intraday setup scanner for US stocks (NASDAQ/NYSE/AMEX), no circuit clamp.">USA TPO</button>
       <span class="tabgap" aria-hidden="true"></span>
-      <button class="tab" data-view="patterns" title="Pattern Analysis — top-down chart-pattern + trend-stage report for one symbol across Monthly → Weekly → Daily → 4H.">Patterns</button>
-      <button class="tab" data-view="vcp" title="VCP Analysis — Mark Minervini VCP/SEPA screen for one symbol: trend template, RS rating, tight base, and a pivot trade plan.">VCP</button>
-      <button class="tab" data-view="elliott" title="Elliott Wave count for one symbol with alternate counts and an explicit invalidation price.">Elliott Wave</button>
+      <button class="tab" id="tab-patterns" data-view="patterns" role="tab" aria-controls="view-patterns" aria-selected="false" tabindex="-1" title="Pattern Analysis — top-down chart-pattern + trend-stage report for one symbol across Monthly → Weekly → Daily → 4H.">Patterns</button>
+      <button class="tab" id="tab-vcp" data-view="vcp" role="tab" aria-controls="view-vcp" aria-selected="false" tabindex="-1" title="VCP Analysis — Mark Minervini VCP/SEPA screen for one symbol: trend template, RS rating, tight base, and a pivot trade plan.">VCP</button>
+      <button class="tab" id="tab-elliott" data-view="elliott" role="tab" aria-controls="view-elliott" aria-selected="false" tabindex="-1" title="Elliott Wave count for one symbol with alternate counts and an explicit invalidation price.">Elliott Wave</button>
       <span class="tabgap" aria-hidden="true"></span>
-      <button class="tab" data-view="brk" title="Breakout-Patterns — ranks stocks across the market closest to breaking out of a chart pattern (long-only).">Breakouts</button>
-      <button class="tab" data-view="brk2" title="VCP/Elliott-Breakout — same breakout idea scan, but the level is a Minervini VCP pivot or an Elliott wave level.">VCP / EW Breakouts</button>
+      <button class="tab" id="tab-brk" data-view="brk" role="tab" aria-controls="view-brk" aria-selected="false" tabindex="-1" title="Breakout-Patterns — ranks stocks across the market closest to breaking out of a chart pattern (long-only).">Breakouts</button>
+      <button class="tab" id="tab-brk2" data-view="brk2" role="tab" aria-controls="view-brk2" aria-selected="false" tabindex="-1" title="VCP/Elliott-Breakout — same breakout idea scan, but the level is a Minervini VCP pivot or an Elliott wave level.">VCP / EW Breakouts</button>
       <span class="tabgap" aria-hidden="true"></span>
-      <button class="tab" data-view="testing" title="Testing — forward-test journal of every frozen plan, pass/fail gates, and an India 1-minute backtest.">Testing</button>
-      <button class="tab" data-view="analytics" title="Analytics — Monte Carlo, market-regime (HMM) and robustness stats computed only from real journal outcomes.">Analytics</button>
+      <button class="tab" id="tab-testing" data-view="testing" role="tab" aria-controls="view-testing" aria-selected="false" tabindex="-1" title="Testing — forward-test journal of every frozen plan, pass/fail gates, and an India 1-minute backtest.">Testing</button>
+      <button class="tab" id="tab-analytics" data-view="analytics" role="tab" aria-controls="view-analytics" aria-selected="false" tabindex="-1" title="Analytics — Monte Carlo, market-regime (HMM) and robustness stats computed only from real journal outcomes.">Analytics</button>
       <span class="tabgap" aria-hidden="true"></span>
-      <button class="tab" data-view="cache" title="Cached Data — shows what price history is stored locally and whether analysing a symbol will cost an upstream request.">Cached Data</button>
+      <button class="tab" id="tab-cache" data-view="cache" role="tab" aria-controls="view-cache" aria-selected="false" tabindex="-1" title="Cached Data — shows what price history is stored locally and whether analysing a symbol will cost an upstream request.">Cached Data</button>
     </nav>
   </div>
 </header>
 
 <!-- START HERE (onboarding / orientation) -->
-<main id="view-start">
+<main id="views">
+<section class="view" id="view-start" role="tabpanel" aria-labelledby="tab-start" tabindex="-1">
   <!-- What this is -->
   <section class="card span2" id="start-intro">
     <h2>Start Here <small>· what this dashboard is, and where to begin</small></h2>
@@ -157,9 +162,9 @@
       <dt>EQ</dt><dd>Entry Quality (0–100) — how chaseable a setup is right now (penalises extension and late-day entries).</dd>
     </dl>
   </section>
-</main>
+</section>
 
-<main id="view-dashboard" class="hidden">
+<section class="view hidden" id="view-dashboard" role="tabpanel" aria-labelledby="tab-dashboard" tabindex="-1">
   <!-- SIGNAL SUMMARY (active chart) -->
   <section class="card span2" id="signal-card">
     <h2>Signal Summary <small>· active chart · intraday decision metrics</small></h2>
@@ -201,6 +206,9 @@
       <span class="pill" id="dash-state">no symbol</span>
     </div>
 
+    <!-- Live data that stopped arriving must say so. Without this the panel kept
+         showing the last read as though it were current. -->
+    <div class="stalebar hidden" id="sig-stale"></div>
     <div id="signal-empty" class="empty"><div class="state-block"><div class="sb-icon" aria-hidden="true">◎</div><div class="sb-title">No symbol loaded</div><p>Type a symbol above and press <b>Load</b>. The Signal Summary reads that exact symbol from your TradingView chart.</p></div></div>
     <div id="signal-body" class="hidden">
       <div class="sigtop">
@@ -210,6 +218,9 @@
         <div class="px"><span id="sig-close">—</span> <span id="sig-chg" class="chg"></span></div>
       </div>
       <div class="verdict" id="sig-verdict"></div>
+      <!-- The verdict tiles read first; the diagnostics that produced them follow
+           below a hairline at the normal tile size. -->
+      <div class="decision decision-primary" id="sig-primary"></div>
       <div class="decision" id="sig-decision"></div>
       <div class="metrics" id="sig-metrics"></div>
       <ul class="signals" id="sig-list"></ul>
@@ -230,10 +241,10 @@
     <div class="scan"><div class="scan-head">Fast scan <small>(NSE/BSE watchlist)</small></div><ul class="symlist" id="india-scan"></ul></div>
     <div class="checklist"><div class="scan-head">Trade checklist</div><ul id="india-check"></ul></div>
   </section>
-</main>
+</section>
 
 <!-- INDIA TPO SCANNER (separate view) -->
-<main id="view-tpo" class="hidden">
+<section class="view hidden" id="view-tpo" role="tabpanel" aria-labelledby="tab-tpo" tabindex="-1">
   <section class="card span2" id="tpo-card">
     <h2>India TPO Scanner <small>· NSE intraday · Market-Profile-informed · fixed entries · high-quality only</small></h2>
     <div class="toolbar">
@@ -316,10 +327,10 @@
     <div class="readout hidden" id="tpo-confirm"></div>
     <div class="hint" id="tpo-note"></div>
   </section>
-</main>
+</section>
 
 <!-- USA TPO SCANNER (separate view) -->
-<main id="view-tpo-usa" class="hidden">
+<section class="view hidden" id="view-tpo-usa" role="tabpanel" aria-labelledby="tab-tpo-usa" tabindex="-1">
   <section class="card span2" id="utpo-card">
     <h2>USA TPO Scanner <small>· NASDAQ/NYSE/AMEX intraday · fixed entries · high-quality only</small></h2>
     <div class="toolbar">
@@ -394,10 +405,10 @@
     <div class="readout hidden" id="utpo-confirm"></div>
     <div class="hint" id="utpo-note"></div>
   </section>
-</main>
+</section>
 
 <!-- PATTERN ANALYSIS (multi-timeframe confluence report) -->
-<main id="view-patterns" class="hidden">
+<section class="view hidden" id="view-patterns" role="tabpanel" aria-labelledby="tab-patterns" tabindex="-1">
   <section class="card span2" id="pat-card">
     <h2>Pattern Analysis <small>· top-down 4H → Daily → Weekly → Monthly · stage + pattern confluence · rule-based</small></h2>
     <div class="toolbar">
@@ -465,10 +476,10 @@
     </div>
     <div class="hint" id="pat-note"></div>
   </section>
-</main>
+</section>
 
 <!-- MINERVINI VCP ANALYSIS -->
-<main id="view-vcp" class="hidden">
+<section class="view hidden" id="view-vcp" role="tabpanel" aria-labelledby="tab-vcp" tabindex="-1">
   <section class="card span2" id="vcp-card">
     <h2>Mark Minervini VCP Analysis <small>· Trend Template · true percentile RS · volatility contraction · pivot &amp; risk</small></h2>
     <div class="toolbar">
@@ -539,10 +550,10 @@
     </div>
     <div class="hint" id="vcp-note"></div>
   </section>
-</main>
+</section>
 
 <!-- ELLIOTT WAVE ANALYSIS -->
-<main id="view-elliott" class="hidden">
+<section class="view hidden" id="view-elliott" role="tabpanel" aria-labelledby="tab-elliott" tabindex="-1">
   <section class="card span2" id="ew-card">
     <h2>Elliott Wave Analysis <small>· primary count + alternates · degree nesting · explicit invalidation</small></h2>
     <div class="toolbar">
@@ -620,10 +631,10 @@
     </div>
     <div class="hint" id="ew-note"></div>
   </section>
-</main>
+</section>
 
 <!-- BREAKOUT-PATTERNS (universe scan → stocks closest to a chart-pattern pivot) -->
-<main id="view-brk" class="hidden">
+<section class="view hidden" id="view-brk" role="tabpanel" aria-labelledby="tab-brk" tabindex="-1">
   <section class="card span2" id="brk-card">
     <h2>Breakout-Patterns <small>· stocks closest to clearing a chart-pattern pivot · real OHLC · high-quality only</small></h2>
     <div class="toolbar">
@@ -692,10 +703,10 @@
     <div class="metaline" id="brk-skipped"></div>
     <div class="hint" id="brk-note"></div>
   </section>
-</main>
+</section>
 
 <!-- VCP / ELLIOTT-BREAKOUT (same pipeline, methodology engines) -->
-<main id="view-brk2" class="hidden">
+<section class="view hidden" id="view-brk2" role="tabpanel" aria-labelledby="tab-brk2" tabindex="-1">
   <section class="card span2" id="brk2-card">
     <h2>VCP / Elliott-Breakout <small>· stocks closest to a Minervini pivot or the wave level that must be cleared</small></h2>
     <div class="toolbar">
@@ -748,10 +759,10 @@
     <div class="metaline" id="brk2-skipped"></div>
     <div class="hint" id="brk2-note"></div>
   </section>
-</main>
+</section>
 
 <!-- CACHED DATA -->
-<main id="view-cache" class="hidden">
+<section class="view hidden" id="view-cache" role="tabpanel" aria-labelledby="tab-cache" tabindex="-1">
   <section class="card span2" id="cache-card">
     <h2>Cached Data for Analysis <small>· what is held locally · whether a symbol costs a fetch</small></h2>
     <div class="toolbar">
@@ -797,10 +808,10 @@
     <div class="tablewrap"><table class="dtable" id="cache-symbols"></table></div>
     <div class="hint" id="cache-note"></div>
   </section>
-</main>
+</section>
 
 <!-- TESTING (strategy evaluation vs gates) -->
-<main id="view-testing" class="hidden">
+<section class="view hidden" id="view-testing" role="tabpanel" aria-labelledby="tab-testing" tabindex="-1">
   <section class="card span2">
     <h2>Testing <small>· forward-test journal (real scanner plans, real outcomes) · gates: PF ≥1.5 · WR ≥40% · R:R ≥1:2</small></h2>
     <details class="disclosure">
@@ -831,12 +842,22 @@
     <div class="metaline" id="test-gates"></div>
     <div class="decision" id="test-overall"></div>
     <h2 class="subhead">Breakdown <small>· by market / setup / confidence</small></h2>
-    <div class="tablewrap"><table class="dtable" id="test-breakdown"></table></div>
+    <!-- Three questions, three tables. They were one <table> stitched together with
+         <th colspan="6"> pseudo-section rows, which reads as a single grid to the eye
+         and to a screen reader, and made the striping restart mid-table. -->
+    <div class="bd-grid">
+      <div><div class="scan-head">By market</div>
+        <div class="tablewrap"><table class="dtable" id="test-bd-market"></table></div></div>
+      <div><div class="scan-head">By setup</div>
+        <div class="tablewrap"><table class="dtable" id="test-bd-setup"></table></div></div>
+      <div><div class="scan-head">By confidence</div>
+        <div class="tablewrap"><table class="dtable" id="test-bd-conf"></table></div></div>
+    </div>
     <div class="readout hidden" id="test-bt"></div>
     <h2 class="subhead">Recent journal <small>· last 100 plans</small></h2>
     <div id="test-filters"></div>
     <div class="tablewrap">
-      <table class="dtable"><thead><tr>
+      <table class="dtable" id="test-table"><thead><tr>
         <th>Date</th><th>Mkt</th><th>Symbol</th><th>Setup</th><th>Signal</th>
         <th class="num">Entry</th><th class="num">SL</th><th class="num">T1</th><th class="num">R:R</th>
         <th class="num">EQ</th><th>Status</th><th>Outcome</th><th class="num">R</th>
@@ -844,10 +865,10 @@
     </div>
     <div class="hint" id="test-note"></div>
   </section>
-</main>
+</section>
 
 <!-- ANALYTICS (Monte Carlo · HMM regime · robustness) -->
-<main id="view-analytics" class="hidden">
+<section class="view hidden" id="view-analytics" role="tabpanel" aria-labelledby="tab-analytics" tabindex="-1">
   <section class="card span2">
     <h2>Analytics <small>· Monte Carlo · HMM market regime · robustness — computed from real journal outcomes only</small></h2>
     <div class="toolbar">
@@ -867,6 +888,8 @@
     <div class="chartbox hidden" id="ana-rob-chart"></div>
     <div class="hint" id="ana-note"></div>
   </section>
+</section>
+
 </main>
 
 <footer>Analysis only — no live order execution. Intraday. Reads the chart tab that is active in TradingView Desktop.</footer>

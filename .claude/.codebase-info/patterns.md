@@ -1,6 +1,6 @@
 # Patterns & Conventions
 
-*Last Updated: 2026-08-14*
+*Last Updated: 2026-09-09*
 
 Conventions here are load-bearing — several are enforced by comments rather than tooling. Preserve
 them when editing.
@@ -64,6 +64,26 @@ env in `.env`. Prefer adding a config key over hardcoding a number.
 No npm packages, no build. Match the existing style: terse code, but generous top-of-file block
 comments explaining the *reasoning* (rate limits, caching TTLs, fabrication policy, past bugs). Those
 comments are the project's design record — update them when the behaviour changes.
+
+## 11. One shared client helper per cross-tab concern (`public/app.js`)
+
+The SPA is dependency-free vanilla JS, so anything used by more than one tab is a small factory or
+helper near the top of `app.js` rather than a per-tab copy. Reuse these instead of writing a
+second implementation:
+
+| Helper | Concern |
+|---|---|
+| `makeFilterBar(prefix, controls, onChange)` | Declarative client-side row filters, persisted per tab in `localStorage`; marks non-default controls `.fpill.is-set` |
+| `makeSortable(prefix, table, spec, onChange)` | Column sort over the row array; positional per-`<th>` spec, categorical `order` lists from the shared `ORD` vocabulary, third click restores scan rank |
+| `renderTable(table, html)` | Splits a built table string into a real `<thead>` + `<tbody>` (header rows in `tbody` broke zebra parity and header association) |
+| `stateBlock` / `emptyRow` / `skeletonRows` | The one empty · loading · error vocabulary |
+| `statStrip(host, stats)` | The label-over-value headline strip; used by both scanners, both breakout tabs, the Testing gates and the VCP/Elliott verdict lines |
+| `upsertTiles(host, specs)` | Patches decision tiles in place on a live poll and flashes only changed values, instead of rebuilding the grid |
+| `announce(msg)` | Writes the single polite `#sr-live` region (scan results, failures, filter counts) |
+| `makeCombo(prefix, onPick)` | Symbol autocomplete with `aria-activedescendant` |
+
+Client filters and sorts **never re-fetch** — they narrow and reorder rows a scan already returned,
+so entries never move and no provider request is spent.
 
 ## Testing
 There is **no automated test suite / runner**. Verification is manual against a live TradingView

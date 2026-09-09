@@ -1,6 +1,6 @@
 # Directory Structure
 
-*Last Updated: 2026-08-14*
+*Last Updated: 2026-09-09*
 
 Organized by **layer/role**: `server/` (HTTP+API), `lib/` (engines), `public/` (SPA),
 `config/` + `.env` (config), `data/` (runtime state), `scripts/` (launch), `pine/` (examples).
@@ -27,7 +27,7 @@ Tradingview-Premium-Claude-MCP-Setup/
 │   └── analytics.mjs        Monte Carlo bootstrap + Gaussian HMM regime + robustness (from real outcomes)
 ├── public/                 Single-page dashboard (no framework)
 │   ├── index.html           Tab layout + How-to-Use guides
-│   ├── app.js               Tab controllers, 7s snapshot poll, on-demand tab fetches
+│   ├── app.js               Tab controllers + shared client helpers, 7s snapshot poll, tab fetches
 │   └── style.css            Styling
 ├── config/
 │   └── markets.json         India-intraday config; tpo/breakouts thresholds; testing gates
