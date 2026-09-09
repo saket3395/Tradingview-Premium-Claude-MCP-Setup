@@ -1,6 +1,6 @@
 # Architecture
 
-*Last Updated: 2026-08-18*
+*Last Updated: 2026-09-09*
 
 ## Overview
 
@@ -32,7 +32,7 @@ database, no auth, no build step, and no dependency install — the whole thing 
 | Component | Where | Responsibility |
 |---|---|---|
 | HTTP server + API router | `server/server.mjs` | `.env` load, optional TLS, static file serving, `routes` table, error → 500 JSON |
-| SPA | `public/index.html`, `app.js`, `style.css` | Tab UI (default view = "Start Here" onboarding), 7s poll of `/api/snapshot`, on-demand tab fetches |
+| SPA | `public/index.html`, `app.js`, `style.css` | Tablist UI over hash-routed tab panels (view resolves hash → `lastView` → "Start Here"), 7s poll of `/api/snapshot`, on-demand tab fetches |
 | CDP bridge | `lib/tv.mjs` | Talk to TradingView Desktop over CDP: read chart/legend/watchlist, switch symbol, Pine (CLI) |
 | Signal parser | `lib/signals.mjs` | Pure: chart legend rows → intraday decision metrics |
 | TPO scanner | `lib/tpo.mjs` | Full-universe scan via TradingView scanner; fixed entries, freeze, state machine, circuit clamp |
